@@ -1,0 +1,469 @@
+  0.003319 Initialized low level socket/threading support.
+  0.003681 Service thread running.
+  0.006240 Creating listen socket in symmetric mode, local virtual port 0
+  0.006443 Local identity: peer_1
+  0.006573 Connecting to 'str:peer_2' in symmetric mode, virtual port 0, from local virtual port 0.
+  0.006708 Creating signaling session for peer 'str:peer_2'
+  0.008068 [#2004494412 P2P str:peer_2 rem vport 0] Using STUN server list: stun.l.google.com:19302
+  0.008081 [#2004494412 P2P str:peer_2 rem vport 0] Relay candidates enabled by P2P_Transport_ICE_Enable, but P2P_TURN_ServerList is empty
+  0.008221 [#2004494412 P2P str:peer_2 rem vport 0] P2P_Transport_ICE_Enable=0x7fffffff, AllowedCandidateTypes=0xe0e
+  0.023632 [#2004494412 P2P str:peer_2 rem vport 0] Queue reliable signal message Initial ICE auth: { ice { auth { pwd_frag: "7n8Yr" } } }
+  0.023706 SteamNetworkingSockets lock held for 16.9ms.  (Performance warning.)  ConnectP2PCustomSignaling,Base::BInitConnection,GetIdentity,SetConfigValue,FinalizeLocalCrypto,CSteamNetworkConnectionP2P::CheckInitICE,CConnectionTransportP2PICE_Valve::Init
+This is usually a symptom of a general performance problem such as thread starvation.
+  0.024089 Sending msg 'Greetings!'
+  0.024103 Waited 15.2ms for SteamNetworkingSockets lock [ServiceThread]
+  0.027819 [#2004494412 P2P str:peer_2 rem vport 0] Queue reliable signal message LocalCandidateAdded: { ice { add_candidate { candidate: "candidate:44849197 0 udp 2130706431 fe80::b198:6516:1db0:81c7 55341 typ host" } } }
+  0.027973 [#2004494412 P2P str:peer_2 rem vport 0] Queue reliable signal message LocalCandidateAdded: { ice { add_candidate { candidate: "candidate:17979438 0 udp 2130706175 10.12.12.3 55342 typ host" } } }
+  0.028086 [#2004494412 P2P str:peer_2 rem vport 0] Queue reliable signal message LocalCandidateAdded: { ice { add_candidate { candidate: "candidate:45537327 0 udp 2130705919 2a02:a210:4c9:3a00:2b3f:e556:26e3:7960 55343 typ host" } } }
+  0.028187 [#2004494412 P2P str:peer_2 rem vport 0] Queue reliable signal message LocalCandidateAdded: { ice { add_candidate { candidate: "candidate:38262832 0 udp 2130705663 2a02:a210:4c9:3a00:894d:895:1a46:6175 55344 typ host" } } }
+  0.028287 [#2004494412 P2P str:peer_2 rem vport 0] Queue reliable signal message LocalCandidateAdded: { ice { add_candidate { candidate: "candidate:40818737 0 udp 2130705407 fe80::4614:ba1c:6cac:17ff 55345 typ host" } } }
+  0.028388 [#2004494412 P2P str:peer_2 rem vport 0] Queue reliable signal message LocalCandidateAdded: { ice { add_candidate { candidate: "candidate:38754354 0 udp 2130705151 192.168.178.133 55346 typ host" } } }
+  0.028490 [#2004494412 P2P str:peer_2 rem vport 0] Queue reliable signal message LocalCandidateAdded: { ice { add_candidate { candidate: "candidate:60119091 0 udp 2130704895 fe80::8394:eee8:a9b8:d28b 55347 typ host" } } }
+  0.028585 [#2004494412 P2P str:peer_2 rem vport 0] Queue reliable signal message LocalCandidateAdded: { ice { add_candidate { candidate: "candidate:24926260 0 udp 2130704639 172.28.48.1 55348 typ host" } } }
+  0.028719 [#2004494412 P2P str:peer_2 rem vport 0] Queue reliable signal message LocalCandidateAdded: { ice { add_candidate { candidate: "candidate:58644533 0 udp 2130704383 fe80::6d9c:c9f7:9f96:84fc 55349 typ host" } } }
+  0.028823 [#2004494412 P2P str:peer_2 rem vport 0] Queue reliable signal message LocalCandidateAdded: { ice { add_candidate { candidate: "candidate:23681078 0 udp 2130704127 172.22.16.1 55350 typ host" } } }
+  0.029166 [#2004494412 P2P str:peer_2 rem vport 0] Entered connecting state
+  0.041129 [#2004494412 P2P str:peer_2 rem vport 0] Queue reliable signal message LocalCandidateAdded: { ice { add_candidate { candidate: "candidate:53650325 0 udp 1677721855 212.102.35.215 55342 typ srflx" } } }
+  0.041182 [#2004494412 P2P str:peer_2 rem vport 0] Sending P2P ConnectRequest
+  0.041359 [#2004494412 P2P str:peer_2 rem vport 0] Sending P2PRendezvous (ConnectRequest)
+  0.125742 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable networkCandidateAdded: { ice { add_candidate { candidate: "candidate:45537337 0 udp 2130705919 2a02:a210:4c9:3a00:2b3f:e556:26e3:7960 55353 typ host" } } }
+  2.276254 [#559200423 P2P str:peer_1 vport 0] Queue reliable signal message LocalCandidateAdded: { ice { add_candidate { candidate: "candidate:38262842 0 udp 2130705663 2a02:a210:4c9:3a00:894d:895:1a46:6175 55354 typ host" } } }
+  2.276358 [#559200423 P2P str:peer_1 vport 0] Queue reliable signal message LocalCandidateAdded: { ice { add_candidate { candidate: "candidate:40818747 0 udp 2130705407 fe80::4614:ba1c:6cac:17ff 55355 typ host" } } }
+  2.276483 [#559200423 P2P str:peer_1 vport 0] Queue reliable signal message LocalCandidateAdded: { ice { add_candidate { candidate: "candidate:38754364 0 udp 2130705151 192.168.178.133 55356 typ host" } } }
+  2.276582 [#559200423 P2P str:peer_1 vport 0] Queue reliable signal message LocalCandidateAdded: { ice { add_candidate { candidate: "candidate:60119101 0 udp 2130704895 fe80::8394:eee8:a9b8:d28b 55357 typ host" } } }
+  2.276681 [#559200423 P2P str:peer_1 vport 0] Queue reliable signal message LocalCandidateAdded: { ice { add_candidate { candidate: "candidate:24926270 0 udp 2130704639 172.28.48.1 55358 typ host" } } }
+  2.276779 [#559200423 P2P str:peer_1 vport 0] Queue reliable signal message LocalCandidateAdded: { ice { add_candidate { candidate: "candidate:58644543 0 udp 2130704383 fe80::6d9c:c9f7:9f96:84fc 55359 typ host" } } }
+  2.276876 [#559200423 P2P str:peer_1 vport 0] Queue reliable signal message LocalCandidateAdded: { ice { add_candidate { candidate: "candidate:23681088 0 udp 2130704127 172.22.16.1 55360 typ host" } } }
+  2.353630 [#559200423 P2P str:peer_1 vport 0] Sending P2PRendezvous (AckMessages)
+  2.374763 WSASendTo [2a02:a210:4c9:3a00:2b3f:e556:26e3:7960]:55343 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  2.384383 [#559200423 P2P str:peer_1 vport 0] Recv P2PRendezvous
+  2.426285 WSASendTo [2a02:a210:4c9:3a00:894d:895:1a46:6175]:55344 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  2.875446 Incoming binding request from [2a02:a210:4c9:3a00:2b3f:e556:26e3:7960]:55343 to [2a02:a210:4c9:3a00:2b3f:e556:26e3:7960]:55353.
+  2.875740 Sending a STUN response to [2a02:a210:4c9:3a00:2b3f:e556:26e3:7960]:55343 from [2a02:a210:4c9:3a00:2b3f:e556:26e3:7960]:55353.
+  2.881813 
+
+Selected candidate [2a02:a210:4c9:3a00:2b3f:e556:26e3:7960]:55353 -> [2a02:a210:4c9:3a00:2b3f:e556:26e3:7960]:55343.
+  2.925835 Incoming binding request from [2a02:a210:4c9:3a00:2b3f:e556:26e3:7960]:55343 to [2a02:a210:4c9:3a00:894d:895:1a46:6175]:55354.
+  2.931523 [#559200423 P2P str:peer_1 vport 0] Selected 'ICE' transport (ping=1, score=1+10000)
+  2.976440 [#559200423 P2P ICE str:peer_1 vport 0] Peer appears to be using 'ICE' transport as primary
+  2.976637 [#559200423 P2P ICE str:peer_1 vport 0] ICE end-to-end connectivity confirmed
+  2.977117 Received message 'Greetings!'
+  2.983194 [#559200423 P2P ICE str:peer_1 vport 0] connected
+  2.987640 [#559200423 P2P ICE str:peer_1 vport 0] connected
+  8.553478 Sending msg 'asd'
+ 11.556391 Received message 'asdasda'
+ 13.584437 Received message '123'
+ 15.087125 Received message '123'
+ 16.574339 Received message 'd'
+ 17.818206 Received message '123'
+.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  0.468710 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  0.518793 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  0.569769 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  0.621494 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  0.625955 Incoming binding request from [2a02:a210:4c9:3a00:2b3f:e556:26e3:7960]:55353 to [2a02:a210:4c9:3a00:2b3f:e556:26e3:7960]:55343.
+  0.626229 Sending a STUN response to [2a02:a210:4c9:3a00:2b3f:e556:26e3:7960]:55353 from [2a02:a210:4c9:3a00:2b3f:e556:26e3:7960]:55343.
+  0.671550 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  0.677023 Incoming binding request from [2a02:a210:4c9:3a00:2b3f:e556:26e3:7960]:55353 to [2a02:a210:4c9:3a00:2b3f:e556:26e3:7960]:55343.
+  0.677249 UseCandidate was set!
+  0.677406 
+
+Selected candidate [2a02:a210:4c9:3a00:2b3f:e556:26e3:7960]:55343 -> [2a02:a210:4c9:3a00:2b3f:e556:26e3:7960]:55353.
+  0.677733 Sending a STUN response to [2a02:a210:4c9:3a00:2b3f:e556:26e3:7960]:55353 from [2a02:a210:4c9:3a00:2b3f:e556:26e3:7960]:55343.
+  0.721655 [#2004494412 P2P str:peer_2 vport 0] Selected 'ICE' transport (ping=1, score=1+10100)
+  0.721935 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  0.727835 [#2004494412 P2P ICE str:peer_2 vport 0] Peer appears to be using 'ICE' transport as primary
+  0.728130 [#2004494412 P2P ICE str:peer_2 vport 0] ICE end-to-end connectivity confirmed
+  0.728206 Incoming binding request from [2a02:a210:4c9:3a00:2b3f:e556:26e3:7960]:55353 to [2a02:a210:4c9:3a00:894d:895:1a46:6175]:55344.
+  0.772263 [#2004494412 P2P ICE str:peer_2 vport 0] connected
+  0.772637 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  0.776433 [#2004494412 P2P ICE str:peer_2 vport 0] connected
+  0.822754 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  0.873443 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  0.923753 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  0.974570 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  1.024841 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  1.075342 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  1.125498 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  1.176374 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  1.226793 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  1.276923 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  1.327323 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  1.378048 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  1.428805 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  1.479615 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  1.529610 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  1.579868 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  1.631300 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  1.682283 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  1.732748 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  1.783561 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  1.834406 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  1.885556 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  1.935595 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  1.986586 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  2.037574 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  2.087798 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  2.138595 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  2.188598 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  2.238839 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  2.289693 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  2.340483 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  2.391513 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  2.442289 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  2.492323 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  2.542630 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  2.593170 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  2.643496 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  2.693743 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  2.744471 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  2.795626 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  2.845843 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  2.896782 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  2.947593 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  2.997787 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  3.049565 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  3.099933 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  3.150584 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  3.201287 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  3.251504 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  3.302304 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  3.352658 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  3.403405 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  3.454027 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  3.504750 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  3.555967 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  3.606468 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  3.656823 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  3.707541 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  3.757948 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  3.808535 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  3.859130 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  3.909682 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  3.960687 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  4.011451 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  4.061511 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  4.112389 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  4.163274 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  4.213682 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  4.264316 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  4.315353 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  4.365590 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  4.415657 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  4.466618 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  4.517321 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  4.567540 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  4.617810 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  4.668594 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  4.719381 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  4.769515 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  4.821274 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  4.871738 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  4.922670 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  4.972895 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  5.023272 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  5.073925 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  5.124682 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  5.175294 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  5.225469 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  5.275502 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  5.326475 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  5.377379 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  5.427503 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  5.478288 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  5.528658 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  5.579410 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  5.629467 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  5.680491 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  5.731437 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  5.781681 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  5.832883 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  5.883434 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  5.933523 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  5.983668 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  6.034341 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  6.084462 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  6.135548 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  6.186321 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  6.237221 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  6.287437 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  6.337590 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  6.356287 Received message 'asd'
+  6.388288 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  6.438737 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  6.489578 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  6.539729 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  6.589785 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  6.641295 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  6.691381 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  6.741500 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  6.792867 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  6.843380 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  6.893670 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  6.944469 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  6.994538 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  7.045425 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  7.096468 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  7.146600 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  7.196929 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  7.247664 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  7.298397 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  7.348530 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  7.399745 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  7.449763 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  7.501314 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  7.551479 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  7.602224 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  7.652415 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  7.702413 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  7.752575 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  7.803208 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  7.853634 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  7.904407 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  7.955243 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  8.005575 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  8.056708 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  8.107522 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  8.158448 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  8.208539 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  8.258829 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  8.309423 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  8.360387 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  8.410607 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  8.461360 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  8.511610 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  8.562478 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  8.612921 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  8.663523 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  8.714172 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  8.764243 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  8.814472 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  8.865362 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  8.916425 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  8.966656 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  9.017516 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  9.067692 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  9.118337 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  9.168370 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  9.218932 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  9.269455 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  9.320306 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  9.340556 Sending msg 'asdasda'
+  9.371437 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  9.422365 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  9.472646 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  9.523384 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  9.573920 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  9.624381 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  9.674549 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  9.725336 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  9.776316 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  9.826481 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  9.877035 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  9.927549 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+  9.978190 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 10.028283 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 10.079181 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 10.129453 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 10.179477 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 10.229704 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 10.279762 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 10.330444 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 10.381360 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 10.432197 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 10.482589 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 10.532711 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 10.583687 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 10.635149 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 10.685439 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 10.736437 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 10.787647 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 10.839576 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 10.890539 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 10.941324 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 10.992136 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 11.043177 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 11.093996 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 11.144355 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 11.195440 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 11.245673 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 11.295968 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 11.346370 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 11.372693 Sending msg '123'
+ 11.397347 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 11.447553 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 11.497880 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 11.548565 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 11.598615 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 11.648643 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 11.698762 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 11.749555 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 11.800010 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 11.851157 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 11.901446 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 11.951606 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 12.002330 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 12.053148 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 12.103606 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 12.153885 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 12.204322 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 12.254431 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 12.304498 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 12.355181 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 12.405486 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 12.455521 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 12.506434 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 12.556782 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 12.607273 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 12.657494 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 12.708461 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 12.758588 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 12.809505 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 12.859522 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 12.870543 Sending msg '123'
+ 12.911421 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 12.962325 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 13.012620 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 13.063237 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 13.113596 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 13.164502 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 13.215511 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 13.266177 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 13.316675 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 13.367319 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 13.418168 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 13.468327 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 13.518622 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 13.569470 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 13.620232 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 13.670447 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 13.720550 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 13.771474 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 13.822276 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 13.872591 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 13.923134 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 13.973522 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 14.024164 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 14.074480 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 14.125384 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 14.176160 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 14.226810 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 14.277345 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 14.328328 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 14.363262 Sending msg 'd'
+ 14.379470 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 14.431358 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 14.482316 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 14.532520 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 14.583707 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 14.634125 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 14.685497 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 14.736840 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 14.788354 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 14.838764 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 14.889295 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 14.939582 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 14.990323 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 15.042251 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 15.092609 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 15.143364 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 15.193485 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 15.245475 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 15.296363 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 15.348330 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 15.398776 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 15.449359 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 15.499679 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 15.551082 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 15.601308 Sending msg '123'
+ 15.602287 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 15.652601 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 15.703413 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 15.753966 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 15.804323 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 15.855115 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 15.905462 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 15.956130 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 16.006323 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 16.056601 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 16.107295 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 16.158215 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 16.208286 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 16.259141 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 16.309524 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 16.359673 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 16.410371 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 16.461159 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 16.511292 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 16.562290 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 16.612367 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 16.662419 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 16.712791 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 16.762766 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 16.812877 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 16.863409 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 16.914343 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 16.964369 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 17.015337 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 17.065602 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 17.116196 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 17.166318 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 17.216594 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 17.266733 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 17.317252 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 17.367260 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 17.417583 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 17.468426 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 17.519326 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 17.569539 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 17.620204 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 17.670422 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 17.721447 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 17.772011 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 17.822450 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 17.873127 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 17.923495 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 17.974371 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 18.026139 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 18.076356 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 18.126476 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 18.176506 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 18.227422 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 18.277570 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 18.327663 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 18.377938 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 18.428434 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 18.479335 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 18.530325 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 18.581320 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 18.631469 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 18.682403 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 18.732533 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 18.783374 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 18.835373 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 18.885540 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 18.936512 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 18.987443 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 19.039152 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 19.089553 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 19.140109 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 19.190431 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 19.241174 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 19.291520 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 19.342387 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 19.393250 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 19.443415 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 19.494389 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 19.544496 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 19.595150 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 19.645479 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 19.696499 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 19.747372 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 19.797511 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 19.848496 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 19.899182 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 19.949577 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 19.999738 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 20.050298 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 20.101086 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
+ 20.151449 WSASendTo 74.125.250.129:19302 failed, returned -1, last error=0x2743 A socket operation was attempted to an unreachable network.
