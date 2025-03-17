@@ -64,64 +64,92 @@ void SendMessageToPeer(const char *pszMsg)
 	assert(r == k_EResultOK);
 }
 
-// void ConnecToPeer(const std::unique_ptr<TrivialSignalingClient> &pSignaling, const SteamNetworkingIdentity &identityRemote, SteamNetworkingErrMsg &errMsg)
+// // Called when a connection undergoes a state transition.
+// void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t *pInfo)
 // {
-// 	std::vector<SteamNetworkingConfigValue_t> vecOpts;
-
-// 	// If we want the local and virtual port to differ, we must set
-// 	// an option.  This is a pretty rare use case, and usually not needed.
-// 	// The local virtual port is only usually relevant for symmetric
-// 	// connections, and then, it almost always matches.  Here we are
-// 	// just showing in this example code how you could handle this if you
-// 	// needed them to differ.
-// 	if (g_nVirtualPortRemote != g_nVirtualPortLocal)
+// 	// What's the state of the connection?
+// 	switch (pInfo->m_info.m_eState)
 // 	{
-// 		SteamNetworkingConfigValue_t opt;
-// 		opt.SetInt32(k_ESteamNetworkingConfig_LocalVirtualPort, g_nVirtualPortLocal);
-// 		vecOpts.push_back(opt);
-// 	}
+// 	case k_ESteamNetworkingConnectionState_ClosedByPeer:
+// 	case k_ESteamNetworkingConnectionState_ProblemDetectedLocally:
 
-// 	// Symmetric mode?  Noce that since we created a listen socket on this local
-// 	// virtual port and tagged it for symmetric connect mode, any connections
-// 	// we create that use the same local virtual port will automatically inherit
-// 	// this setting.  However, this is really not recommended.  It is best to be
-// 	// explicit.
-// 	if (g_eTestRole == k_ETestRole_Symmetric)
-// 	{
-// 		SteamNetworkingConfigValue_t opt;
-// 		opt.SetInt32(k_ESteamNetworkingConfig_SymmetricConnect, 1);
-// 		vecOpts.push_back(opt);
-// 		TEST_Printf("Connecting to '%s' in symmetric mode, virtual port %d, from local virtual port %d.\n",
-// 					SteamNetworkingIdentityRender(identityRemote).c_str(), g_nVirtualPortRemote,
-// 					g_nVirtualPortLocal);
-// 	}
-// 	else
-// 	{
-// 		TEST_Printf("Connecting to '%s', virtual port %d, from local virtual port %d.\n",
-// 					SteamNetworkingIdentityRender(identityRemote).c_str(), g_nVirtualPortRemote,
-// 					g_nVirtualPortLocal);
-// 	}
+// 		TEST_Printf("[%s] %s, reason %d: %s\n",
+// 					pInfo->m_info.m_szConnectionDescription,
+// 					(pInfo->m_info.m_eState == k_ESteamNetworkingConnectionState_ClosedByPeer ? "closed by peer" : "problem detected locally"),
+// 					pInfo->m_info.m_eEndReason,
+// 					pInfo->m_info.m_szEndDebug);
 
-// 	// Connect using the "custom signaling" path.  Note that when
-// 	// you are using this path, the identity is actually optional,
-// 	// since we don't need it.  (Your signaling object already
-// 	// knows how to talk to the peer) and then the peer identity
-// 	// will be confirmed via rendezvous.
-// 	ISteamNetworkingConnectionSignaling *pConnSignaling = pSignaling->CreateSignalingForConnection(
-// 		identityRemote,
-// 		errMsg);
-// 	assert(pConnSignaling);
-// 	g_hConnection = SteamNetworkingSockets()->ConnectP2PCustomSignaling(pConnSignaling, &identityRemote, g_nVirtualPortRemote, (int)vecOpts.size(), vecOpts.data());
-// 	assert(g_hConnection != k_HSteamNetConnection_Invalid);
+// 		// Close our end
+// 		SteamNetworkingSockets()->CloseConnection(pInfo->m_hConn, 0, nullptr, false);
 
-// 	// Go ahead and send a message now.  The message will be queued until route finding
-// 	// completes.
-// 	SendMessageToPeer("Greetings!");
+// 		if (g_hConnection == pInfo->m_hConn)
+// 		{
+// 			g_hConnection = k_HSteamNetConnection_Invalid;
+
+// 			// In this example, we will bail the test whenever this happens.
+// 			// Was this a normal termination?
+// 			int rc = 0;
+// 			if (rc == k_ESteamNetworkingConnectionState_ProblemDetectedLocally || pInfo->m_info.m_eEndReason != k_ESteamNetConnectionEnd_App_Generic)
+// 				rc = 1; // failure
+// 			Quit(rc);
+// 		}
+// 		else
+// 		{
+// 			// Why are we hearing about any another connection?
+// 			assert(false);
+// 		}
+
+// 		break;
+
+// 	case k_ESteamNetworkingConnectionState_None:
+// 		// Notification that a connection was destroyed.  (By us, presumably.)
+// 		// We don't need this, so ignore it.
+// 		break;
+
+// 	case k_ESteamNetworkingConnectionState_Connecting:
+
+// 		// Is this a connection we initiated, or one that we are receiving?
+// 		if (g_hListenSock != k_HSteamListenSocket_Invalid && pInfo->m_info.m_hListenSocket == g_hListenSock)
+// 		{
+// 			// Somebody's knocking
+// 			// Note that we assume we will only ever receive a single connection
+// 			assert(g_hConnection == k_HSteamNetConnection_Invalid); // not really a bug in this code, but a bug in the test
+
+// 			TEST_Printf("[%s] Accepting\n", pInfo->m_info.m_szConnectionDescription);
+// 			g_hConnection = pInfo->m_hConn;
+// 			SteamNetworkingSockets()->AcceptConnection(pInfo->m_hConn);
+// 		}
+// 		else
+// 		{
+// 			// Note that we will get notification when our own connection that
+// 			// we initiate enters this state.
+// 			assert(g_hConnection == pInfo->m_hConn);
+// 			TEST_Printf("[%s] Entered connecting state\n", pInfo->m_info.m_szConnectionDescription);
+// 		}
+// 		break;
+
+// 	case k_ESteamNetworkingConnectionState_FindingRoute:
+// 		// P2P connections will spend a brief time here where they swap addresses
+// 		// and try to find a route.
+// 		TEST_Printf("[%s] finding route\n", pInfo->m_info.m_szConnectionDescription);
+// 		break;
+
+// 	case k_ESteamNetworkingConnectionState_Connected:
+// 		// We got fully connected
+// 		assert(pInfo->m_hConn == g_hConnection); // We don't initiate or accept any other connections, so this should be out own connection
+// 		TEST_Printf("[%s] connected\n", pInfo->m_info.m_szConnectionDescription);
+// 		break;
+
+// 	default:
+// 		assert(false);
+// 		break;
+// 	}
 // }
 
 // Called when a connection undergoes a state transition.
 void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t *pInfo)
 {
+	const HSteamNetConnection temp = App::Get().GetPeerConnections().GetPeerConnection(pInfo->m_info.m_identityRemote);
 	// What's the state of the connection?
 	switch (pInfo->m_info.m_eState)
 	{
@@ -137,7 +165,7 @@ void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t
 		// Close our end
 		SteamNetworkingSockets()->CloseConnection(pInfo->m_hConn, 0, nullptr, false);
 
-		if (g_hConnection == pInfo->m_hConn)
+		if (App::Get().GetPeerConnections().GetPeerConnection(pInfo->m_info.m_identityRemote) == pInfo->m_hConn)
 		{
 			g_hConnection = k_HSteamNetConnection_Invalid;
 
@@ -172,6 +200,7 @@ void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t
 
 			TEST_Printf("[%s] Accepting\n", pInfo->m_info.m_szConnectionDescription);
 			g_hConnection = pInfo->m_hConn;
+			App::Get().GetPeerConnections().RegisterNewPeerConnection(pInfo->m_info.m_identityRemote, pInfo->m_hConn);
 			SteamNetworkingSockets()->AcceptConnection(pInfo->m_hConn);
 		}
 		else
@@ -204,6 +233,12 @@ void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 App *App::s_Instance = nullptr;
+
+App &App::Get()
+{
+	assert(s_Instance != nullptr);
+	return *s_Instance;
+}
 
 App::App(int argc, const char **argv)
 {
@@ -397,7 +432,6 @@ App::App(int argc, const char **argv)
 			g_hListenSock = SteamNetworkingSockets()->CreateListenSocketP2P(g_nVirtualPortLocal, 1, &opt);
 			assert(g_hListenSock != k_HSteamListenSocket_Invalid);
 		}
-
 	}
 	{
 		m_NewTrivial.ConnectToServer("127.0.0.1:10000");
@@ -591,58 +625,40 @@ void App::onUpdate()
 	// Check callbacks
 	TEST_PumpCallbacks();
 
-	// If we have a connection, then poll it for messages
-	if (g_hConnection != k_HSteamNetConnection_Invalid)
+	std::string message = m_PeerConnections.PollMessages();
+	if (message.length() > 0)
 	{
-		if (messageToSend.length() > 0)
-		{
-			std::cout << "Sending message to peer" << std::endl;
-			SendMessageToPeer(messageToSend.c_str());
-			messageToSend = "";
-		}
-		SteamNetworkingMessage_t *pMessage;
-		int r = SteamNetworkingSockets()->ReceiveMessagesOnConnection(g_hConnection, &pMessage, 1);
-		assert(r == 0 || r == 1); // <0 indicates an error
-		if (r == 1)
-		{
-			// In this example code we will assume all messages are '\0'-terminated strings.
-			// Obviously, this is not secure.
-			TEST_Printf("Received message '%s'\n", pMessage->GetData());
-			// std::string message = reinterpret_cast<char *>(pMessage->GetData());
-			const char *message = reinterpret_cast<const char *>(pMessage->GetData());
-			log(message);
-
-			// Free message struct and buffer.
-			pMessage->Release();
-
-			// If we're the client, go ahead and shut down.  In this example we just
-			// wanted to establish a connection and exchange a message, and we've done that.
-			// Note that we use "linger" functionality.  This flushes out any remaining
-			// messages that we have queued.  Essentially to us, the connection is closed,
-			// but on thew wire, we will not actually close it until all reliable messages
-			// have been confirmed as received by the client.  (Or the connection is closed
-			// by the peer or drops.)  If we are the "client" role, then we know that no such
-			// messages are in the pipeline in this test.  But in symmetric mode, it is
-			// possible that we need to flush out our message that we sent.
-			// if (g_eTestRole != k_ETestRole_Server)
-			// {
-			// 	TEST_Printf("Closing connection and shutting down.\n");
-			// 	SteamNetworkingSockets()->CloseConnection(g_hConnection, 0, "Test completed OK", true);
-			// 	break;
-			// }
-
-			// We're the server.  Send a reply.
-			// SendMessageToPeer("I got your message");
-			// if (messageToSend.length() > 0)
-			// {
-			// 	std::cout << "Sending message to peer" << std::endl;
-			// 	SendMessageToPeer(messageToSend.c_str());
-			// 	messageToSend = "";
-			// }
-			// log("I got your message");
-			// std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-		}
+		log(message);
 	}
+
+	// If we have a connection, then poll it for messages
+	// if (g_hConnection != k_HSteamNetConnection_Invalid)
+	// {
+	// 	if (messageToSend.length() > 0)
+	// 	{
+	// 		std::cout << "Sending message to peer" << std::endl;
+	// 		SendMessageToPeer(messageToSend.c_str());
+	// 		messageToSend = "";
+	// 	}
+	// 	SteamNetworkingMessage_t *pMessage;
+	// 	int r = SteamNetworkingSockets()->ReceiveMessagesOnConnection(g_hConnection, &pMessage, 1);
+	// 	assert(r == 0 || r == 1); // <0 indicates an error
+	// 	if (r == 1)
+	// 	{
+	// 		std::string m = pMessage->m_identityPeer.GetGenericString();
+	// 		// In this example code we will assume all messages are '\0'-terminated strings.
+	// 		// Obviously, this is not secure.
+	// 		TEST_Printf("Received message '%s'\n", pMessage->GetData());
+	// 		// std::string message = reinterpret_cast<char *>(pMessage->GetData());
+	// 		const char *message = reinterpret_cast<const char *>(pMessage->GetData());
+	// 		m = m + ": " + message;
+	// 		log(m);
+	// 		// log(message);
+
+	// 		// Free message struct and buffer.
+	// 		pMessage->Release();
+	// 	}
+	// }
 }
 
 void App::onImGuiRender()
@@ -657,8 +673,8 @@ void App::onImGuiRender()
 
 	ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport());
 
-	ImGui::Begin("window 1");
-	ImGui::Text("Hello, world!");
+	ImGui::Begin("Stats");
+	// ImGui::Text("Hello, world!");
 	ImGui::End();
 
 	ImGui::Begin("Logs");
@@ -678,6 +694,7 @@ void App::onImGuiRender()
 			// log(buf);
 			// SendMessageToPeer(buf);
 			messageToSend = buf;
+			m_PeerConnections.SetOutgoingMessage(messageToSend);
 			std::memset(buf, 0, sizeof(buf));
 			std::cout << "Message sent: " << messageToSend << std::endl;
 		}
@@ -690,8 +707,18 @@ void App::onImGuiRender()
 		ImGui::InputText("Peer username", buf, IM_ARRAYSIZE(buf));
 		if (ImGui::Button("Send"))
 		{
-			m_NewTrivial.ConnectToPeer(m_identityRemote);
-			g_hConnection = m_NewTrivial.GetConnection();
+			// m_NewTrivial.ConnectToPeer(m_identityRemote);
+			// g_hConnection = m_NewTrivial.GetConnection();
+
+			// g_hConnection = TrivialSignalingServer::SendPeerConnectOffer(m_identityRemote);
+			g_hConnection = m_PeerConnections.ConnectToPeer(m_identityRemote);
+
+			// std::cout << "Genertic string: " << m_identityRemote.GetGenericString() << std::endl;
+			// m_PeerConnections.ConnectToPeer(m_identityRemote);
+			// if (m_PeerConnections.GetPeerConnection(m_identityRemote) != k_HSteamNetConnection_Invalid)
+			// {
+			// 	g_hConnection = m_PeerConnections.GetPeerConnection(m_identityRemote);
+			// }
 			// log(buf);
 			// SendMessageToPeer(buf);
 			// messageToSend = buf;

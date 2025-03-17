@@ -16,6 +16,19 @@ inline int HexDigitVal(char c)
 	return -1;
 }
 
+void TrivialSignalingServer::ConnectToServer(const std::string &serverAddress)
+{
+	// assert if s_Instance is not null
+	assert(s_Instance == nullptr);
+
+	if (m_NetworkThread.joinable())
+		m_NetworkThread.join();
+
+	m_ServerAddress = serverAddress;
+	m_NetworkThread = std::thread([this]()
+								  { NetworkThreadFunc(); });
+}
+
 void TrivialSignalingServer::NetworkThreadFunc()
 {
 	s_Instance = this;
@@ -113,7 +126,7 @@ void TrivialSignalingServer::NetworkThreadFunc()
 	m_Running.store(true);
 	while (m_Running.load())
 	{
-		std::cout << "Polling for messages...\n";
+		// std::cout << "Polling for messages...\n";
 		PollIncomingMessagesNew();
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
@@ -296,6 +309,112 @@ void TrivialSignalingServer::PollIncomingMessagesNew()
 	}
 }
 
+HSteamNetConnection TrivialSignalingServer::SendPeerConnectOffer(const SteamNetworkingIdentity &identityRemote)
+{
+	std::vector<SteamNetworkingConfigValue_t> vecOpts;
+
+	int m_nVirtualPortRemote = 0;
+	int m_nVirtualPortLocal = 0;
+
+	// If we want the local and virtual port to differ, we must set
+	// an option.  This is a pretty rare use case, and usually not needed.
+	// The local virtual port is only usually relevant for symmetric
+	// connections, and then, it almost always matches.  Here we are
+	// just showing in this example code how you could handle this if you
+	// needed them to differ.
+	if (m_nVirtualPortRemote != m_nVirtualPortLocal)
+	{
+		SteamNetworkingConfigValue_t opt;
+		opt.SetInt32(k_ESteamNetworkingConfig_LocalVirtualPort, m_nVirtualPortLocal);
+		vecOpts.push_back(opt);
+	}
+
+	// Symmetric mode?  Noce that since we created a listen socket on this local
+	// virtual port and tagged it for symmetric connect mode, any connections
+	// we create that use the same local virtual port will automatically inherit
+	// this setting.  However, this is really not recommended.  It is best to be
+	// explicit.
+	{
+		SteamNetworkingConfigValue_t opt;
+		opt.SetInt32(k_ESteamNetworkingConfig_SymmetricConnect, 1);
+		vecOpts.push_back(opt);
+		TEST_Printf("Connecting to '%s' in symmetric mode, virtual port %d, from local virtual port %d.\n",
+					SteamNetworkingIdentityRender(identityRemote).c_str(), m_nVirtualPortRemote,
+					m_nVirtualPortLocal);
+	}
+	// Connect using the "custom signaling" path.  Note that when
+	// you are using this path, the identity is actually optional,
+	// since we don't need it.  (Your signaling object already
+	// knows how to talk to the peer) and then the peer identity
+	// will be confirmed via rendezvous.
+	// ISteamNetworkingConnectionSignaling *pConnSignaling = CreateSignalingForConnection(
+	// 	identityRemote,
+	// 	errMsg);
+	ISteamNetworkingConnectionSignaling *pConnSignaling = CreateSignalingForConnection(
+		identityRemote);
+	assert(pConnSignaling);
+	HSteamNetConnection m_hConnection = SteamNetworkingSockets()->ConnectP2PCustomSignaling(pConnSignaling, &identityRemote, m_nVirtualPortRemote, (int)vecOpts.size(), vecOpts.data());
+	assert(m_hConnection != k_HSteamNetConnection_Invalid);
+
+	// Go ahead and send a message now.  The message will be queued until route finding
+	// completes.
+	// SendMessageToPeer("Greetings!");
+	return m_hConnection;
+}
+// HSteamNetConnection TrivialSignalingServer::SendPeerConnectOffer(const SteamNetworkingIdentity &identityRemote)
+// {
+// 	// asert if s_Instance is null
+// 	assert(s_Instance != nullptr);
+
+// 	std::vector<SteamNetworkingConfigValue_t> vecOpts;
+// 	int m_nVirtualPortRemote = 0;
+// 		int m_nVirtualPortLocal = 0;
+
+// 	// If we want the local and virtual port to differ, we must set
+// 	// an option.  This is a pretty rare use case, and usually not needed.
+// 	// The local virtual port is only usually relevant for symmetric
+// 	// connections, and then, it almost always matches.  Here we are
+// 	// just showing in this example code how you could handle this if you
+// 	// needed them to differ.
+// 	if (m_nVirtualPortRemote != m_nVirtualPortLocal)
+// 	{
+// 		SteamNetworkingConfigValue_t opt;
+// 		opt.SetInt32(k_ESteamNetworkingConfig_LocalVirtualPort, m_nVirtualPortLocal);
+// 		vecOpts.push_back(opt);
+// 	}
+
+// 	// Symmetric mode?  Noce that since we created a listen socket on this local
+// 	// virtual port and tagged it for symmetric connect mode, any connections
+// 	// we create that use the same local virtual port will automatically inherit
+// 	// this setting.  However, this is really not recommended.  It is best to be
+// 	// explicit.
+// 	{
+// 		SteamNetworkingConfigValue_t opt;
+// 		opt.SetInt32(k_ESteamNetworkingConfig_SymmetricConnect, 1);
+// 		vecOpts.push_back(opt);
+// 		TEST_Printf("Connecting to '%s' in symmetric mode, virtual port %d, from local virtual port %d.\n",
+// 					SteamNetworkingIdentityRender(identityRemote).c_str(), m_nVirtualPortRemote,
+// 					m_nVirtualPortLocal);
+// 	}
+// 	// Connect using the "custom signaling" path.  Note that when
+// 	// you are using this path, the identity is actually optional,
+// 	// since we don't need it.  (Your signaling object already
+// 	// knows how to talk to the peer) and then the peer identity
+// 	// will be confirmed via rendezvous.
+// 	// ISteamNetworkingConnectionSignaling *pConnSignaling = CreateSignalingForConnection(
+// 	// 	identityRemote,
+// 	// 	errMsg);
+// 	ISteamNetworkingConnectionSignaling *pConnSignaling = CreateSignalingForConnection(
+// 		identityRemote);
+// 	assert(pConnSignaling);
+// 	HSteamNetConnection connection = SteamNetworkingSockets()->ConnectP2PCustomSignaling(pConnSignaling, &identityRemote, m_nVirtualPortRemote, (int)vecOpts.size(), vecOpts.data());
+// 	if (connection == k_HSteamNetConnection_Invalid)
+// 	{
+// 		TEST_Printf("Failed to send connect request to '%s'\n", SteamNetworkingIdentityRender(identityRemote).c_str());
+// 	}
+// 	return connection;
+// }
+
 void TrivialSignalingServer::ConnectToPeer(const SteamNetworkingIdentity &identityRemote)
 {
 	std::vector<SteamNetworkingConfigValue_t> vecOpts;
@@ -347,6 +466,7 @@ void TrivialSignalingServer::ConnectToPeer(const SteamNetworkingIdentity &identi
 
 ISteamNetworkingConnectionSignaling *TrivialSignalingServer::CreateSignalingForConnection(const SteamNetworkingIdentity &identityPeer)
 {
+	assert(s_Instance != nullptr);
 	SteamNetworkingIdentityRender sIdentityPeer(identityPeer);
 
 	// FIXME - here we really ought to confirm that the string version of the
@@ -356,8 +476,8 @@ ISteamNetworkingConnectionSignaling *TrivialSignalingServer::CreateSignalingForC
 	// Silence warnings
 	// (void)errMsg;
 
-	return new ConnectionSignaling(this, sIdentityPeer.c_str());
-	return nullptr;
+	// return new ConnectionSignaling(this, sIdentityPeer.c_str());
+	return new ConnectionSignaling(s_Instance, sIdentityPeer.c_str());
 }
 
 void TrivialSignalingServer::SendMessageToPeer(const char *pszMsg)

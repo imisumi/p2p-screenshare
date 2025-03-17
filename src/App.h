@@ -18,6 +18,7 @@
 #include <memory>
 
 #include "Networking/TrivialSignalingServer.h"
+#include "Networking/PeerConnections.h"
 
 class App
 {
@@ -52,6 +53,10 @@ public:
 	{
 		m_Logs.push_back(msg);
 	}
+
+	static App& Get();
+
+	PeerConnections &GetPeerConnections() { return m_PeerConnections; }
 
 private:
 	void onUpdate();
@@ -90,4 +95,6 @@ private:
 	TrivialSignalingServer m_NewTrivial;
 
 	SteamNetworkingIdentity m_identityRemote;
+
+	PeerConnections m_PeerConnections;
 };

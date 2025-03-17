@@ -43,21 +43,15 @@ public:
 		Connecting,
 		FailedToConnect
 	};
+
+	TrivialSignalingServer() = default;
 	~TrivialSignalingServer()
 	{
 		if (m_NetworkThread.joinable())
 			m_NetworkThread.join();
 	}
 
-	void ConnectToServer(const std::string &serverAddress)
-	{
-		if (m_NetworkThread.joinable())
-			m_NetworkThread.join();
-
-		m_ServerAddress = serverAddress;
-		m_NetworkThread = std::thread([this]()
-									  { NetworkThreadFunc(); });
-	}
+	void ConnectToServer(const std::string &serverAddress);
 
 	void DisconnectFromServer()
 	{
@@ -69,6 +63,7 @@ public:
 	std::string GetConnectionDebugMessage() const { return m_ConnectionDebugMessage; }
 
 	void ConnectToPeer(const SteamNetworkingIdentity &identityRemote);
+	static HSteamNetConnection SendPeerConnectOffer(const SteamNetworkingIdentity &identityRemote);
 	HSteamNetConnection GetConnection() const { return m_hConnection; }
 
 private:
@@ -123,7 +118,7 @@ private:
 
 	void PollIncomingMessagesNew();
 
-	ISteamNetworkingConnectionSignaling *CreateSignalingForConnection(const SteamNetworkingIdentity &identityPeer);
+	static ISteamNetworkingConnectionSignaling *CreateSignalingForConnection(const SteamNetworkingIdentity &identityPeer);
 	void SendMessageToPeer(const char *pszMsg);
 
 private:
