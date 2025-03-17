@@ -1,5 +1,8 @@
 #include "trivial_signaling_client.h"
 
+#include <vector>
+#include <sstream>
+
 void TrivialSignalingClient::CloseSocket()
 {
 	if (m_sock != INVALID_SOCKET)
@@ -42,7 +45,7 @@ void TrivialSignalingClient::Connect()
 	Send(m_sGreeting);
 }
 
-TrivialSignalingClient::TrivialSignalingClient(const sockaddr *adrServer, size_t adrServerSize, ISteamNetworkingSockets *pSteamNetworkingSockets)
+TrivialSignalingClient::TrivialSignalingClient(const sockaddr *adrServer, size_t adrServerSize, ISteamNetworkingSockets *pSteamNetworkingSockets, const char *pszServerAddress)
 	: m_adrServerSize(adrServerSize), m_pSteamNetworkingSockets(pSteamNetworkingSockets)
 {
 	memcpy(&m_adrServer, adrServer, adrServerSize);
@@ -99,15 +102,294 @@ ISteamNetworkingConnectionSignaling *TrivialSignalingClient::CreateSignalingForC
 	return new ConnectionSignaling(this, sIdentityPeer.c_str());
 }
 
+// void PrintHumanReadable(const std::string& data)
+// {
+//     // Print size information
+//     TEST_Printf("Received data: %zu bytes\n", data.size());
+
+//     // Hex output - 16 bytes per line
+//     TEST_Printf("Hex representation:\n");
+//     char hexLine[16*3 + 1]; // Each byte becomes 2 hex chars + 1 space, plus null terminator
+//     char asciiLine[17];     // 16 chars + null terminator
+
+//     for (size_t i = 0; i < data.size(); i += 16) {
+//         // Format position
+//         TEST_Printf("%04zx: ", i);
+
+//         // Clear buffers
+//         memset(hexLine, ' ', sizeof(hexLine) - 1);
+//         hexLine[sizeof(hexLine) - 1] = 0;
+//         memset(asciiLine, 0, sizeof(asciiLine));
+
+//         // Process up to 16 bytes
+//         for (size_t j = 0; j < 16 && i + j < data.size(); j++) {
+//             unsigned char c = (unsigned char)data[i + j];
+
+//             // Format hex portion
+//             static const char hexChars[] = "0123456789ABCDEF";
+//             hexLine[j*3] = hexChars[c >> 4];
+//             hexLine[j*3 + 1] = hexChars[c & 0xF];
+
+//             // Format ASCII portion
+//             asciiLine[j] = (c >= 32 && c <= 126) ? c : '.';
+//         }
+
+//         // Output the formatted line
+//         TEST_Printf("%s  %s\n", hexLine, asciiLine);
+//     }
+
+//     // Try to interpret as a string if it looks like one
+//     bool printable = true;
+//     for (char c : data) {
+//         if ((unsigned char)c < 32 || (unsigned char)c > 126) {
+//             if (c != '\n' && c != '\r' && c != '\t') {
+//                 printable = false;
+//                 break;
+//             }
+//         }
+//     }
+
+//     if (printable) {
+//         TEST_Printf("\nInterpretable as text:\n%s\n", data.c_str());
+//     }
+// }
+
+void PrintHumanReadable(const std::string &data)
+{
+	// Print size information
+	TEST_Printf("Received data: %zu bytes\n", data.size());
+
+	// Hex output - 16 bytes per line
+	TEST_Printf("Hex representation:\n");
+	char hexLine[16 * 3 + 1]; // Each byte becomes 2 hex chars + 1 space, plus null terminator
+	char asciiLine[17];		  // 16 chars + null terminator
+
+	for (size_t i = 0; i < data.size(); i += 16)
+	{
+		// Format position
+		TEST_Printf("%04zx: ", i);
+
+		// Clear buffers
+		memset(hexLine, ' ', sizeof(hexLine) - 1);
+		hexLine[sizeof(hexLine) - 1] = 0;
+		memset(asciiLine, 0, sizeof(asciiLine));
+
+		// Process up to 16 bytes
+		for (size_t j = 0; j < 16 && i + j < data.size(); j++)
+		{
+			unsigned char c = (unsigned char)data[i + j];
+
+			// Format hex portion
+			static const char hexChars[] = "0123456789ABCDEF";
+			hexLine[j * 3] = hexChars[c >> 4];
+			hexLine[j * 3 + 1] = hexChars[c & 0xF];
+
+			// Format ASCII portion
+			asciiLine[j] = (c >= 32 && c <= 126) ? c : '.';
+		}
+
+		// Output the formatted line
+		TEST_Printf("%s  %s\n", hexLine, asciiLine);
+	}
+
+	// Try to interpret as a string if it looks like one
+	bool printable = true;
+	for (char c : data)
+	{
+		if ((unsigned char)c < 32 || (unsigned char)c > 126)
+		{
+			if (c != '\n' && c != '\r' && c != '\t')
+			{
+				printable = false;
+				break;
+			}
+		}
+	}
+
+	if (printable)
+	{
+		TEST_Printf("\nInterpretable as text:\n%s\n", data.c_str());
+	}
+
+	// NEW: Enhanced human-readable analysis
+	TEST_Printf("\n-------- ENHANCED READABLE FORMAT --------\n");
+
+	// Check for WebRTC ICE candidates
+	std::vector<std::string> candidates;
+	std::string dataStr(data.begin(), data.end());
+
+	// Extract ICE candidates
+	size_t pos = 0;
+	while ((pos = dataStr.find("candidate:", pos)) != std::string::npos)
+	{
+		size_t endPos = dataStr.find(" typ ", pos);
+		if (endPos != std::string::npos)
+		{
+			endPos = dataStr.find_first_of("\r\n", endPos);
+			if (endPos == std::string::npos)
+			{
+				endPos = dataStr.length();
+			}
+			candidates.push_back(dataStr.substr(pos, endPos - pos));
+		}
+		pos++;
+	}
+
+	// Print extracted ICE candidates in readable format
+	if (!candidates.empty())
+	{
+		TEST_Printf("Found %zu WebRTC ICE candidates:\n", candidates.size());
+		for (size_t i = 0; i < candidates.size(); i++)
+		{
+			std::string &candidate = candidates[i];
+
+			// Extract fields from candidate
+			std::istringstream ss(candidate);
+			std::string token;
+			std::vector<std::string> fields;
+
+			while (std::getline(ss, token, ' '))
+			{
+				fields.push_back(token);
+			}
+
+			// Parse candidate fields if valid format
+			if (fields.size() >= 8)
+			{
+				std::string candidateId;
+				std::string protocol;
+				std::string ip;
+				std::string port;
+				std::string type;
+
+				// Extract ID
+				size_t idPos = fields[0].find(':');
+				if (idPos != std::string::npos)
+				{
+					candidateId = fields[0].substr(idPos + 1);
+				}
+
+				// Extract protocol, usually at position 2
+				for (size_t j = 1; j < fields.size(); j++)
+				{
+					if (fields[j] == "udp" || fields[j] == "tcp")
+					{
+						protocol = fields[j];
+
+						// For WebRTC ICE candidates, the format should be:
+						// candidate:23683448 0 udp 2130704127 172.22.16.1 57720 typ host
+						//                          ^ protocol  ^ priority  ^ IP   ^ port
+
+						// IP address is typically at position j+2 (after protocol and priority)
+						if (j + 2 < fields.size())
+						{
+							ip = fields[j + 2];
+						}
+
+						// Port is typically at position j+3 (after IP)
+						if (j + 3 < fields.size())
+						{
+							port = fields[j + 3];
+						}
+						break;
+					}
+				}
+
+				// Find type
+				for (size_t j = 0; j < fields.size() - 1; j++)
+				{
+					if (fields[j] == "typ")
+					{
+						type = fields[j + 1];
+						break;
+					}
+				}
+
+				TEST_Printf("Candidate %d:\n", i + 1);
+				TEST_Printf("  ID: %s\n", candidateId.c_str());
+				TEST_Printf("  Protocol: %s\n", protocol.c_str());
+				TEST_Printf("  IP: %s\n", ip.c_str());
+				TEST_Printf("  Port: %s\n", port.c_str());
+				TEST_Printf("  Type: %s\n", type.c_str());
+				TEST_Printf("\n");
+			}
+			else
+			{
+				// Just print the raw candidate if parsing failed
+				TEST_Printf("Candidate %d: %s\n\n", i + 1, candidate.c_str());
+			}
+		}
+	}
+
+	// Look for peer information
+	std::vector<std::string> peerInfo;
+	pos = 0;
+	while ((pos = dataStr.find("peer_", pos)) != std::string::npos)
+	{
+		size_t endPos = dataStr.find_first_of("\r\n \t", pos);
+		if (endPos == std::string::npos)
+		{
+			endPos = dataStr.length();
+		}
+		std::string peer = dataStr.substr(pos, endPos - pos);
+		if (std::find(peerInfo.begin(), peerInfo.end(), peer) == peerInfo.end())
+		{
+			peerInfo.push_back(peer);
+		}
+		pos++;
+	}
+
+	if (!peerInfo.empty())
+	{
+		TEST_Printf("Peer Information:\n");
+		for (const auto &peer : peerInfo)
+		{
+			TEST_Printf("  %s\n", peer.c_str());
+		}
+		TEST_Printf("\n");
+	}
+
+	// Print data type summary
+	TEST_Printf("Data Summary:\n");
+	if (!candidates.empty())
+	{
+		TEST_Printf("  - Contains WebRTC ICE candidates\n");
+	}
+	if (!peerInfo.empty())
+	{
+		TEST_Printf("  - Contains peer connection information\n");
+	}
+
+	// Additional protocol detection
+	if (dataStr.find("SDP") != std::string::npos ||
+		dataStr.find("m=audio") != std::string::npos ||
+		dataStr.find("m=video") != std::string::npos)
+	{
+		TEST_Printf("  - Contains SDP (Session Description Protocol) data\n");
+	}
+
+	if (dataStr.find("STUN") != std::string::npos)
+	{
+		TEST_Printf("  - Contains STUN protocol data\n");
+	}
+
+	if (dataStr.find("TURN") != std::string::npos)
+	{
+		TEST_Printf("  - Contains TURN protocol data\n");
+	}
+
+	TEST_Printf("----------------------------------------\n");
+}
+
 void TrivialSignalingClient::Poll()
 {
 	// Drain the socket into the buffer, and check for reconnecting
 	sockMutex.lock();
-	if (m_sock == INVALID_SOCKET)
-	{
-		Connect();
-	}
-	else
+	// if (m_sock == INVALID_SOCKET)
+	// {
+	// 	Connect();
+	// }
+	// else
 	{
 		for (;;)
 		{
@@ -136,6 +418,7 @@ void TrivialSignalingClient::Poll()
 		while (!m_queueSend.empty())
 		{
 			const std::string &s = m_queueSend.front();
+			// TEST_Printf("Sending signal: '%s'\n", s.c_str());
 			int l = (int)s.length();
 			int r = ::send(m_sock, s.c_str(), l, 0);
 			if (r < 0 && IgnoreSocketError(GetSocketError()))
@@ -157,6 +440,8 @@ void TrivialSignalingClient::Poll()
 		}
 	}
 
+	// sockMutex.unlock();
+	// return;
 	// Release the lock now.  See the notes below about why it's very important
 	// to release the lock early and not hold it while we try to dispatch the
 	// received callbacks.
@@ -165,9 +450,25 @@ void TrivialSignalingClient::Poll()
 	// Now dispatch any buffered signals
 	for (;;)
 	{
-
+		// break ;
 		// Find end of line.  Do we have a complete signal?
+
 		size_t l = m_sBufferedData.find('\n');
+		if (l == std::string::npos)
+			break;
+		TEST_Printf("Received signal: '%s'\n", m_sBufferedData.substr(0, 50).c_str());
+
+		// space count
+		size_t first_space = m_sBufferedData.find(' ');
+		if (first_space == std::string::npos)
+			break;
+
+		std::string type = m_sBufferedData.substr(0, first_space);
+
+		m_sBufferedData.erase(0, first_space + 1);
+		TEST_Printf("Remaining: '%s'\n", m_sBufferedData.substr(0, 50).c_str());
+
+		l = m_sBufferedData.find('\n');
 		if (l == std::string::npos)
 			break;
 
@@ -294,7 +595,7 @@ std::unique_ptr<TrivialSignalingClient> TrivialSignalingClient::CreateTrivialSig
 	}
 
 	// auto *pClient = new TrivialSignalingClient(pAddrInfo->ai_addr, pAddrInfo->ai_addrlen, pSteamNetworkingSockets);
-	std::unique_ptr<TrivialSignalingClient> pClient = std::make_unique<TrivialSignalingClient>(pAddrInfo->ai_addr, pAddrInfo->ai_addrlen, pSteamNetworkingSockets);
+	std::unique_ptr<TrivialSignalingClient> pClient = std::make_unique<TrivialSignalingClient>(pAddrInfo->ai_addr, pAddrInfo->ai_addrlen, pSteamNetworkingSockets, pszServerAddress);
 	freeaddrinfo(pAddrInfo);
 
 	return pClient;

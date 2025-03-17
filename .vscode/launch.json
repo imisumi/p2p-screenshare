@@ -8,11 +8,10 @@
       "request": "launch",
       "program": "${workspaceFolder}/build/Debug/test_p2p.exe",
       "args": [
-        "--symmetric",
         "--identity-local",
-        "str:peer_1",
+        "str:peer_2",
         "--identity-remote",
-        "str:peer_2"
+        "str:peer_1"
       ],
       "cwd": "${workspaceFolder}"
     }

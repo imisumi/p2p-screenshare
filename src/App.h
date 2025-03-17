@@ -21,14 +21,27 @@
 
 #include "trivial_signaling_client.h"
 
+#include "NewTrivial.h"
+
 // #include "desktop-duplication/DesktopCapture.h"
 // #include "network/NetworkManager.h"
 
 class App
 {
 public:
+	enum class ConnectionStatus
+	{
+		Disconnected = 0,
+		Connected,
+		Connecting,
+		FailedToConnect
+	};
 	App(int argc, const char **argv);
-	~App() = default;
+	~App()
+	{
+		m_NewTrivial.DisconnectFromServer();
+		GameNetworkingSockets_Kill();
+	}
 
 	// void init();
 	void run();
@@ -80,6 +93,9 @@ private:
 	std::vector<std::string> m_Logs;
 	// std::unique_ptr<TrivialSignalingClient> m_pSignaling;
 
-
 	std::string messageToSend;
+
+	NewTrivial m_NewTrivial;
+
+	SteamNetworkingIdentity m_identityRemote;
 };

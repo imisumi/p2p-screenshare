@@ -120,8 +120,13 @@ func ServiceConnection(conn net.Conn) {
 			continue
 		}
 
+		// hello := "hello world"
+
 		// Format new message, putting the sender's identity in front.
-		msg := identity + " " + payload
+		// [type]  [from][payload]
+		msg := "CONNECT" + " " + identity + " " + payload
+		// msg := "CONNECT" + identity + " " + payload
+		// msg := identity + " " + payload
 
 		// Send to the peer
 		dest_conn.Write([]byte(msg))

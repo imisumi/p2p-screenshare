@@ -293,8 +293,8 @@ App::App(int argc, const char **argv)
 	{
 		SteamNetworkingIdentity identityLocal;
 		identityLocal.Clear();
-		SteamNetworkingIdentity identityRemote;
-		identityRemote.Clear();
+		// SteamNetworkingIdentity identityRemote;
+		m_identityRemote.Clear();
 		const char *pszTrivialSignalingService = "localhost:10000";
 		// const char *pszTrivialSignalingService = "141.148.233.31:6969";
 
@@ -321,7 +321,7 @@ App::App(int argc, const char **argv)
 			if (!strcmp(pszSwitch, "--identity-local"))
 				ParseIdentity(identityLocal);
 			else if (!strcmp(pszSwitch, "--identity-remote"))
-				ParseIdentity(identityRemote);
+				ParseIdentity(m_identityRemote);
 			else if (!strcmp(pszSwitch, "--signaling-server"))
 				pszTrivialSignalingService = GetArg();
 			else if (!strcmp(pszSwitch, "--log"))
@@ -335,7 +335,7 @@ App::App(int argc, const char **argv)
 
 		if (identityLocal.IsInvalid())
 			TEST_Fatal("Must specify local identity using --identity-local");
-		if (identityRemote.IsInvalid() && g_eTestRole != k_ETestRole_Server)
+		if (m_identityRemote.IsInvalid() && g_eTestRole != k_ETestRole_Server)
 			TEST_Fatal("Must specify remote identity using --identity-remote");
 
 		// Initialize library, with the desired local identity
@@ -364,12 +364,14 @@ App::App(int argc, const char **argv)
 		// SteamNetworkingUtils()->SetGlobalConfigValueInt32(k_ESteamNetworkingConfig_P2P_Transport_ICE_Enable, k_nSteamNetworkingConfig_P2P_Transport_ICE_Enable_Public );
 		// SteamNetworkingUtils()->SetGlobalConfigValueInt32(k_ESteamNetworkingConfig_P2P_Transport_ICE_Enable, k_nSteamNetworkingConfig_P2P_Transport_ICE_Enable_Private );
 
+#if 0
 		// Create the signaling service
 		SteamNetworkingErrMsg errMsg;
 		pSignaling = TrivialSignalingClient::CreateTrivialSignalingClient(pszTrivialSignalingService, SteamNetworkingSockets(), errMsg);
 		if (pSignaling == nullptr)
 			TEST_Fatal("Failed to initializing signaling client.  %s", errMsg);
 		// m_pSignaling = pSignaling;
+#endif
 
 		//? throw error if not conencted to the server
 		// pSignaling->Poll();
@@ -403,6 +405,7 @@ App::App(int argc, const char **argv)
 			assert(g_hListenSock != k_HSteamListenSocket_Invalid);
 		}
 
+#if 0
 		// Begin connecting to peer, unless we are the server
 		if (g_eTestRole != k_ETestRole_Server)
 		{
@@ -415,7 +418,14 @@ App::App(int argc, const char **argv)
 				ConnecToPeer(pSignaling, identityRemote, errMsg);
 			}
 		}
+#endif
 	}
+	{
+		m_NewTrivial.ConnectToServer("127.0.0.1:10000");
+		// m_NewTrivial.GetConnectionDebugMessage();
+		TEST_Printf("Connection debug message: %s\n", m_NewTrivial.GetConnectionDebugMessage().c_str());
+	}
+	// g_hConnection = m_NewTrivial.GetConnection();
 }
 
 bool App::CreateDeviceD3D(HWND hWnd)
@@ -595,8 +605,9 @@ void App::run()
 
 void App::onUpdate()
 {
+	// return;
 	// Check for incoming signals, and dispatch them
-	pSignaling->Poll();
+	// pSignaling->Poll();
 
 	// Check callbacks
 	TEST_PumpCallbacks();
@@ -690,6 +701,23 @@ void App::onImGuiRender()
 			messageToSend = buf;
 			std::memset(buf, 0, sizeof(buf));
 			std::cout << "Message sent: " << messageToSend << std::endl;
+		}
+		ImGui::End();
+	}
+	//? Connect to peer
+	{
+		ImGui::Begin("Connect to peer");
+		static char buf[256] = "";
+		ImGui::InputText("Peer username", buf, IM_ARRAYSIZE(buf));
+		if (ImGui::Button("Send"))
+		{
+			m_NewTrivial.ConnectToPeer(m_identityRemote);
+			g_hConnection = m_NewTrivial.GetConnection();
+			// log(buf);
+			// SendMessageToPeer(buf);
+			// messageToSend = buf;
+			// std::memset(buf, 0, sizeof(buf));
+			// std::cout << "Message sent: " << messageToSend << std::endl;
 		}
 		ImGui::End();
 	}
