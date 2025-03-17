@@ -1,9 +1,9 @@
-#include "NewTrivial.h"
+#include "TrivialSignalingServer.h"
 
 #include <cassert>
 #include "test_common.h"
 
-static NewTrivial *s_Instance = nullptr;
+static TrivialSignalingServer *s_Instance = nullptr;
 
 inline int HexDigitVal(char c)
 {
@@ -16,7 +16,7 @@ inline int HexDigitVal(char c)
 	return -1;
 }
 
-void NewTrivial::NetworkThreadFunc()
+void TrivialSignalingServer::NetworkThreadFunc()
 {
 	s_Instance = this;
 
@@ -58,15 +58,6 @@ void NewTrivial::NetworkThreadFunc()
 		closesocket(m_Socket);
 		return;
 	}
-
-	// Connect to server
-	// if (connect(m_Socket, (sockaddr *)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR)
-	// {
-	// 	std::cerr << "Connection failed!\n";
-	// 	m_ConnectionStatus.store(ConnectionStatus::FailedToConnect);
-	// 	closesocket(m_Socket);
-	// 	return;
-	// }
 
 	// Connect to server
 	if (connect(m_Socket, (sockaddr *)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR)
@@ -113,17 +104,6 @@ void NewTrivial::NetworkThreadFunc()
 
 	std::cout << "Identity: " << identity << "\n";
 
-	// int s = send(m_Socket, "str:peer_2\n", 12, 0);
-	// int s = send(m_Socket, identity.c_str(), identity.length(), 0);
-	// if (s == SOCKET_ERROR)
-	// {
-	// 	std::cerr << "Send failed with error: " << WSAGetLastError() << "\n";
-	// }
-	// else
-	// {
-	// 	std::cout << "Sent " << s << " bytes\n";
-	// }
-
 	Send(identity);
 
 	std::cout << "Connected to server!\n";
@@ -144,7 +124,7 @@ void NewTrivial::NetworkThreadFunc()
 	m_ConnectionStatus.store(ConnectionStatus::Disconnected);
 }
 
-void NewTrivial::PollIncomingMessagesNew()
+void TrivialSignalingServer::PollIncomingMessagesNew()
 {
 	sockMutex.lock();
 	std::string m_sBufferedData;
@@ -179,11 +159,6 @@ void NewTrivial::PollIncomingMessagesNew()
 			// Handle error
 		}
 	}
-	// else
-	// {
-	// 	std::cerr << "Recv failed with error: " << WSAGetLastError() << "\n";
-	// 	m_Running.store(false);
-	// }
 
 	// Flush and send queued messages
 	{
@@ -264,7 +239,7 @@ void NewTrivial::PollIncomingMessagesNew()
 			// Setup a context object that can respond if this signal is a connection request.
 			struct Context : ISteamNetworkingSignalingRecvContext
 			{
-				NewTrivial *m_pOwner;
+				TrivialSignalingServer *m_pOwner;
 
 				virtual ISteamNetworkingConnectionSignaling *OnConnectRequest(
 					HSteamNetConnection hConn,
@@ -321,7 +296,7 @@ void NewTrivial::PollIncomingMessagesNew()
 	}
 }
 
-void NewTrivial::ConnectToPeer(const SteamNetworkingIdentity &identityRemote)
+void TrivialSignalingServer::ConnectToPeer(const SteamNetworkingIdentity &identityRemote)
 {
 	std::vector<SteamNetworkingConfigValue_t> vecOpts;
 
@@ -370,7 +345,7 @@ void NewTrivial::ConnectToPeer(const SteamNetworkingIdentity &identityRemote)
 	SendMessageToPeer("Greetings!");
 }
 
-ISteamNetworkingConnectionSignaling *NewTrivial::CreateSignalingForConnection(const SteamNetworkingIdentity &identityPeer)
+ISteamNetworkingConnectionSignaling *TrivialSignalingServer::CreateSignalingForConnection(const SteamNetworkingIdentity &identityPeer)
 {
 	SteamNetworkingIdentityRender sIdentityPeer(identityPeer);
 
@@ -385,7 +360,7 @@ ISteamNetworkingConnectionSignaling *NewTrivial::CreateSignalingForConnection(co
 	return nullptr;
 }
 
-void NewTrivial::SendMessageToPeer(const char *pszMsg)
+void TrivialSignalingServer::SendMessageToPeer(const char *pszMsg)
 {
 	TEST_Printf("Sending msg '%s'\n", pszMsg);
 	EResult r = SteamNetworkingSockets()->SendMessageToConnection(
@@ -393,7 +368,7 @@ void NewTrivial::SendMessageToPeer(const char *pszMsg)
 	assert(r == k_EResultOK);
 }
 
-void NewTrivial::Send(const std::string &s)
+void TrivialSignalingServer::Send(const std::string &s)
 {
 	assert(s.length() > 0 && s[s.length() - 1] == '\n');
 

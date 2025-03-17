@@ -1,69 +1,3 @@
-// #pragma once
-
-// #include <GameNetworkingSockets/steam/steamnetworkingsockets.h>
-// #include <GameNetworkingSockets/steam/isteamnetworkingutils.h>
-// #ifndef STEAMNETWORKINGSOCKETS_OPENSOURCE
-// #include <GameNetworkingSockets/steam/steam_api.h>
-// #endif
-
-// #include <string>
-// #include <map>
-// #include <thread>
-// #include <functional>
-// #include <iostream>
-// #include <chrono>
-// #include <vector>
-// class NewTrivial
-// {
-// public:
-// 	enum class ConnectionStatus
-// 	{
-// 		Disconnected = 0,
-// 		Connected,
-// 		Connecting,
-// 		FailedToConnect
-// 	};
-// 	~NewTrivial()
-// 	{
-// 		if (m_NetworkThread.joinable())
-// 			m_NetworkThread.join();
-// 	}
-// 	void ConnectToServer(const std::string &serverAddress)
-// 	{
-// 		if (m_NetworkThread.joinable())
-// 			m_NetworkThread.join();
-
-// 		m_ServerAddress = serverAddress;
-// 		m_NetworkThread = std::thread([this]()
-// 									  { NetworkThreadFunc(); });
-// 	}
-
-// 	std::string GetConnectionDebugMessage() const { return m_ConnectionDebugMessage; }
-
-// private:
-// 	void NetworkThreadFunc();
-
-// 	static void ConnectionStatusChangedCallback(SteamNetConnectionStatusChangedCallback_t *info);
-// 	void OnConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t *info);
-
-// 	void PollIncomingMessages();
-
-// 	void PollConnectionStateChanges();
-
-// private:
-// 	std::thread m_NetworkThread;
-// 	ConnectionStatus m_ConnectionStatus = ConnectionStatus::Disconnected;
-
-// 	std::string m_ServerAddress;
-
-// 	std::string m_ConnectionDebugMessage;
-
-// 	ISteamNetworkingSockets *m_Interface = nullptr;
-
-// 	bool m_Running = false;
-// 	HSteamNetConnection m_Connection = 0;
-// };
-
 #pragma once
 
 #include <GameNetworkingSockets/steam/steamnetworkingsockets.h>
@@ -93,11 +27,13 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 typedef int socklen_t;
-inline int GetSocketError();
-inline bool IgnoreSocketError(int e);
+inline int GetSocketError() { return WSAGetLastError(); }
+inline bool IgnoreSocketError(int e)
+{
+	return e == WSAEWOULDBLOCK || e == WSAENOTCONN;
+}
 #endif
-
-class NewTrivial
+class TrivialSignalingServer
 {
 public:
 	enum class ConnectionStatus
@@ -107,7 +43,7 @@ public:
 		Connecting,
 		FailedToConnect
 	};
-	~NewTrivial()
+	~TrivialSignalingServer()
 	{
 		if (m_NetworkThread.joinable())
 			m_NetworkThread.join();
@@ -134,15 +70,16 @@ public:
 
 	void ConnectToPeer(const SteamNetworkingIdentity &identityRemote);
 	HSteamNetConnection GetConnection() const { return m_hConnection; }
+
 private:
 	// This is the thing we'll actually create to send signals for a particular
 	// connection.
 	struct ConnectionSignaling : ISteamNetworkingConnectionSignaling
 	{
-		NewTrivial *const m_pOwner;
+		TrivialSignalingServer *const m_pOwner;
 		std::string const m_sPeerIdentity; // Save off the string encoding of the identity we're talking to
 
-		ConnectionSignaling(NewTrivial *owner, const char *pszPeerIdentity)
+		ConnectionSignaling(TrivialSignalingServer *owner, const char *pszPeerIdentity)
 			: m_pOwner(owner), m_sPeerIdentity(pszPeerIdentity)
 		{
 		}
@@ -184,34 +121,22 @@ private:
 	};
 	void NetworkThreadFunc();
 
-	// static void ConnectionStatusChangedCallback(SteamNetConnectionStatusChangedCallback_t *info);
-
 	void PollIncomingMessagesNew();
 
 	ISteamNetworkingConnectionSignaling *CreateSignalingForConnection(const SteamNetworkingIdentity &identityPeer);
 	void SendMessageToPeer(const char *pszMsg);
 
-	// void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t *pInfo);
-
-
 private:
 	std::thread m_NetworkThread;
-	// ConnectionStatus m_ConnectionStatus = ConnectionStatus::Disconnected;
 
 	std::string m_ServerAddress;
 
 	std::string m_ConnectionDebugMessage;
 
-	// bool m_Running = false;
-	// HSteamNetConnection m_Connection = 0;
-
 	std::atomic<bool> m_Running = false;
 	std::atomic<ConnectionStatus> m_ConnectionStatus = ConnectionStatus::Disconnected;
-	// std::atomic<HSteamNetConnection> m_Connection =
 
 	SOCKET m_Socket;
-
-	// SteamNetworkingIdentity m_IdentityLocal;
 
 	ISteamNetworkingSockets *m_Interface;
 

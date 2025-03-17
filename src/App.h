@@ -1,7 +1,5 @@
 #pragma once
 
-// #include <d3d11.h>
-
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
@@ -19,12 +17,7 @@
 #include <span>
 #include <memory>
 
-#include "trivial_signaling_client.h"
-
-#include "NewTrivial.h"
-
-// #include "desktop-duplication/DesktopCapture.h"
-// #include "network/NetworkManager.h"
+#include "Networking/TrivialSignalingServer.h"
 
 class App
 {
@@ -91,11 +84,10 @@ private:
 	bool m_Lisening = false;
 
 	std::vector<std::string> m_Logs;
-	// std::unique_ptr<TrivialSignalingClient> m_pSignaling;
 
 	std::string messageToSend;
 
-	NewTrivial m_NewTrivial;
+	TrivialSignalingServer m_NewTrivial;
 
 	SteamNetworkingIdentity m_identityRemote;
 };

@@ -11,7 +11,9 @@
 
 #include <GameNetworkingSockets/steam/steamnetworkingsockets.h>
 #include <GameNetworkingSockets/steam/isteamnetworkingutils.h>
-#include "trivial_signaling_client.h"
+// #include "trivial_signaling_client.h"
+
+#include "test_common.h"
 
 HSteamListenSocket g_hListenSock;
 HSteamNetConnection g_hConnection;
@@ -27,7 +29,7 @@ ETestRole g_eTestRole = k_ETestRole_Undefined;
 int g_nVirtualPortLocal = 0;  // Used when listening, and when connecting
 int g_nVirtualPortRemote = 0; // Only used when connecting
 
-std::unique_ptr<TrivialSignalingClient> pSignaling;
+// std::unique_ptr<TrivialSignalingClient> pSignaling;
 
 void Quit(int rc)
 {
@@ -62,60 +64,60 @@ void SendMessageToPeer(const char *pszMsg)
 	assert(r == k_EResultOK);
 }
 
-void ConnecToPeer(const std::unique_ptr<TrivialSignalingClient> &pSignaling, const SteamNetworkingIdentity &identityRemote, SteamNetworkingErrMsg &errMsg)
-{
-	std::vector<SteamNetworkingConfigValue_t> vecOpts;
+// void ConnecToPeer(const std::unique_ptr<TrivialSignalingClient> &pSignaling, const SteamNetworkingIdentity &identityRemote, SteamNetworkingErrMsg &errMsg)
+// {
+// 	std::vector<SteamNetworkingConfigValue_t> vecOpts;
 
-	// If we want the local and virtual port to differ, we must set
-	// an option.  This is a pretty rare use case, and usually not needed.
-	// The local virtual port is only usually relevant for symmetric
-	// connections, and then, it almost always matches.  Here we are
-	// just showing in this example code how you could handle this if you
-	// needed them to differ.
-	if (g_nVirtualPortRemote != g_nVirtualPortLocal)
-	{
-		SteamNetworkingConfigValue_t opt;
-		opt.SetInt32(k_ESteamNetworkingConfig_LocalVirtualPort, g_nVirtualPortLocal);
-		vecOpts.push_back(opt);
-	}
+// 	// If we want the local and virtual port to differ, we must set
+// 	// an option.  This is a pretty rare use case, and usually not needed.
+// 	// The local virtual port is only usually relevant for symmetric
+// 	// connections, and then, it almost always matches.  Here we are
+// 	// just showing in this example code how you could handle this if you
+// 	// needed them to differ.
+// 	if (g_nVirtualPortRemote != g_nVirtualPortLocal)
+// 	{
+// 		SteamNetworkingConfigValue_t opt;
+// 		opt.SetInt32(k_ESteamNetworkingConfig_LocalVirtualPort, g_nVirtualPortLocal);
+// 		vecOpts.push_back(opt);
+// 	}
 
-	// Symmetric mode?  Noce that since we created a listen socket on this local
-	// virtual port and tagged it for symmetric connect mode, any connections
-	// we create that use the same local virtual port will automatically inherit
-	// this setting.  However, this is really not recommended.  It is best to be
-	// explicit.
-	if (g_eTestRole == k_ETestRole_Symmetric)
-	{
-		SteamNetworkingConfigValue_t opt;
-		opt.SetInt32(k_ESteamNetworkingConfig_SymmetricConnect, 1);
-		vecOpts.push_back(opt);
-		TEST_Printf("Connecting to '%s' in symmetric mode, virtual port %d, from local virtual port %d.\n",
-					SteamNetworkingIdentityRender(identityRemote).c_str(), g_nVirtualPortRemote,
-					g_nVirtualPortLocal);
-	}
-	else
-	{
-		TEST_Printf("Connecting to '%s', virtual port %d, from local virtual port %d.\n",
-					SteamNetworkingIdentityRender(identityRemote).c_str(), g_nVirtualPortRemote,
-					g_nVirtualPortLocal);
-	}
+// 	// Symmetric mode?  Noce that since we created a listen socket on this local
+// 	// virtual port and tagged it for symmetric connect mode, any connections
+// 	// we create that use the same local virtual port will automatically inherit
+// 	// this setting.  However, this is really not recommended.  It is best to be
+// 	// explicit.
+// 	if (g_eTestRole == k_ETestRole_Symmetric)
+// 	{
+// 		SteamNetworkingConfigValue_t opt;
+// 		opt.SetInt32(k_ESteamNetworkingConfig_SymmetricConnect, 1);
+// 		vecOpts.push_back(opt);
+// 		TEST_Printf("Connecting to '%s' in symmetric mode, virtual port %d, from local virtual port %d.\n",
+// 					SteamNetworkingIdentityRender(identityRemote).c_str(), g_nVirtualPortRemote,
+// 					g_nVirtualPortLocal);
+// 	}
+// 	else
+// 	{
+// 		TEST_Printf("Connecting to '%s', virtual port %d, from local virtual port %d.\n",
+// 					SteamNetworkingIdentityRender(identityRemote).c_str(), g_nVirtualPortRemote,
+// 					g_nVirtualPortLocal);
+// 	}
 
-	// Connect using the "custom signaling" path.  Note that when
-	// you are using this path, the identity is actually optional,
-	// since we don't need it.  (Your signaling object already
-	// knows how to talk to the peer) and then the peer identity
-	// will be confirmed via rendezvous.
-	ISteamNetworkingConnectionSignaling *pConnSignaling = pSignaling->CreateSignalingForConnection(
-		identityRemote,
-		errMsg);
-	assert(pConnSignaling);
-	g_hConnection = SteamNetworkingSockets()->ConnectP2PCustomSignaling(pConnSignaling, &identityRemote, g_nVirtualPortRemote, (int)vecOpts.size(), vecOpts.data());
-	assert(g_hConnection != k_HSteamNetConnection_Invalid);
+// 	// Connect using the "custom signaling" path.  Note that when
+// 	// you are using this path, the identity is actually optional,
+// 	// since we don't need it.  (Your signaling object already
+// 	// knows how to talk to the peer) and then the peer identity
+// 	// will be confirmed via rendezvous.
+// 	ISteamNetworkingConnectionSignaling *pConnSignaling = pSignaling->CreateSignalingForConnection(
+// 		identityRemote,
+// 		errMsg);
+// 	assert(pConnSignaling);
+// 	g_hConnection = SteamNetworkingSockets()->ConnectP2PCustomSignaling(pConnSignaling, &identityRemote, g_nVirtualPortRemote, (int)vecOpts.size(), vecOpts.data());
+// 	assert(g_hConnection != k_HSteamNetConnection_Invalid);
 
-	// Go ahead and send a message now.  The message will be queued until route finding
-	// completes.
-	SendMessageToPeer("Greetings!");
-}
+// 	// Go ahead and send a message now.  The message will be queued until route finding
+// 	// completes.
+// 	SendMessageToPeer("Greetings!");
+// }
 
 // Called when a connection undergoes a state transition.
 void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t *pInfo)
@@ -364,15 +366,6 @@ App::App(int argc, const char **argv)
 		// SteamNetworkingUtils()->SetGlobalConfigValueInt32(k_ESteamNetworkingConfig_P2P_Transport_ICE_Enable, k_nSteamNetworkingConfig_P2P_Transport_ICE_Enable_Public );
 		// SteamNetworkingUtils()->SetGlobalConfigValueInt32(k_ESteamNetworkingConfig_P2P_Transport_ICE_Enable, k_nSteamNetworkingConfig_P2P_Transport_ICE_Enable_Private );
 
-#if 0
-		// Create the signaling service
-		SteamNetworkingErrMsg errMsg;
-		pSignaling = TrivialSignalingClient::CreateTrivialSignalingClient(pszTrivialSignalingService, SteamNetworkingSockets(), errMsg);
-		if (pSignaling == nullptr)
-			TEST_Fatal("Failed to initializing signaling client.  %s", errMsg);
-		// m_pSignaling = pSignaling;
-#endif
-
 		//? throw error if not conencted to the server
 		// pSignaling->Poll();
 
@@ -405,20 +398,6 @@ App::App(int argc, const char **argv)
 			assert(g_hListenSock != k_HSteamListenSocket_Invalid);
 		}
 
-#if 0
-		// Begin connecting to peer, unless we are the server
-		if (g_eTestRole != k_ETestRole_Server)
-		{
-			const char *localIdentityString = identityLocal.GetGenericString();
-			TEST_Printf("Local identity: %s\n", localIdentityString);
-			// if (argv[3])
-			if (strcmp(localIdentityString, "peer_1") == 0)
-			{
-
-				ConnecToPeer(pSignaling, identityRemote, errMsg);
-			}
-		}
-#endif
 	}
 	{
 		m_NewTrivial.ConnectToServer("127.0.0.1:10000");
