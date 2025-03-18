@@ -110,9 +110,10 @@ void TrivialSignalingServer::NetworkThreadFunc()
 	assert(!identitySelf.IsLocalHost());
 
 	//? we need this to register with the signaling sever
-	std::string identity = identitySelf.GetGenericString();
-	identity = "str:" + identity;
-	// assert(strchr(identity.c_str(), ' ') == nullptr);
+	// std::string identity = identitySelf.GetGenericString();
+	std::string identity = SteamNetworkingIdentityRender(identitySelf).c_str();
+	// identity = "str:" + identity;
+	assert(strchr(identity.c_str(), ' ') == nullptr);
 	identity.push_back('\n');
 
 	std::cout << "Identity: " << identity << "\n";

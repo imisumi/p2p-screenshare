@@ -16,7 +16,7 @@
 #include "test_common.h"
 
 HSteamListenSocket g_hListenSock;
-HSteamNetConnection g_hConnection;
+// HSteamNetConnection g_hConnection;
 enum ETestRole
 {
 	k_ETestRole_Undefined,
@@ -59,92 +59,10 @@ void Quit(int rc)
 void SendMessageToPeer(const char *pszMsg)
 {
 	TEST_Printf("Sending msg '%s'\n", pszMsg);
-	EResult r = SteamNetworkingSockets()->SendMessageToConnection(
-		g_hConnection, pszMsg, (int)strlen(pszMsg) + 1, k_nSteamNetworkingSend_Reliable, nullptr);
-	assert(r == k_EResultOK);
+	// EResult r = SteamNetworkingSockets()->SendMessageToConnection(
+	// 	g_hConnection, pszMsg, (int)strlen(pszMsg) + 1, k_nSteamNetworkingSend_Reliable, nullptr);
+	// assert(r == k_EResultOK);
 }
-
-// // Called when a connection undergoes a state transition.
-// void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t *pInfo)
-// {
-// 	// What's the state of the connection?
-// 	switch (pInfo->m_info.m_eState)
-// 	{
-// 	case k_ESteamNetworkingConnectionState_ClosedByPeer:
-// 	case k_ESteamNetworkingConnectionState_ProblemDetectedLocally:
-
-// 		TEST_Printf("[%s] %s, reason %d: %s\n",
-// 					pInfo->m_info.m_szConnectionDescription,
-// 					(pInfo->m_info.m_eState == k_ESteamNetworkingConnectionState_ClosedByPeer ? "closed by peer" : "problem detected locally"),
-// 					pInfo->m_info.m_eEndReason,
-// 					pInfo->m_info.m_szEndDebug);
-
-// 		// Close our end
-// 		SteamNetworkingSockets()->CloseConnection(pInfo->m_hConn, 0, nullptr, false);
-
-// 		if (g_hConnection == pInfo->m_hConn)
-// 		{
-// 			g_hConnection = k_HSteamNetConnection_Invalid;
-
-// 			// In this example, we will bail the test whenever this happens.
-// 			// Was this a normal termination?
-// 			int rc = 0;
-// 			if (rc == k_ESteamNetworkingConnectionState_ProblemDetectedLocally || pInfo->m_info.m_eEndReason != k_ESteamNetConnectionEnd_App_Generic)
-// 				rc = 1; // failure
-// 			Quit(rc);
-// 		}
-// 		else
-// 		{
-// 			// Why are we hearing about any another connection?
-// 			assert(false);
-// 		}
-
-// 		break;
-
-// 	case k_ESteamNetworkingConnectionState_None:
-// 		// Notification that a connection was destroyed.  (By us, presumably.)
-// 		// We don't need this, so ignore it.
-// 		break;
-
-// 	case k_ESteamNetworkingConnectionState_Connecting:
-
-// 		// Is this a connection we initiated, or one that we are receiving?
-// 		if (g_hListenSock != k_HSteamListenSocket_Invalid && pInfo->m_info.m_hListenSocket == g_hListenSock)
-// 		{
-// 			// Somebody's knocking
-// 			// Note that we assume we will only ever receive a single connection
-// 			assert(g_hConnection == k_HSteamNetConnection_Invalid); // not really a bug in this code, but a bug in the test
-
-// 			TEST_Printf("[%s] Accepting\n", pInfo->m_info.m_szConnectionDescription);
-// 			g_hConnection = pInfo->m_hConn;
-// 			SteamNetworkingSockets()->AcceptConnection(pInfo->m_hConn);
-// 		}
-// 		else
-// 		{
-// 			// Note that we will get notification when our own connection that
-// 			// we initiate enters this state.
-// 			assert(g_hConnection == pInfo->m_hConn);
-// 			TEST_Printf("[%s] Entered connecting state\n", pInfo->m_info.m_szConnectionDescription);
-// 		}
-// 		break;
-
-// 	case k_ESteamNetworkingConnectionState_FindingRoute:
-// 		// P2P connections will spend a brief time here where they swap addresses
-// 		// and try to find a route.
-// 		TEST_Printf("[%s] finding route\n", pInfo->m_info.m_szConnectionDescription);
-// 		break;
-
-// 	case k_ESteamNetworkingConnectionState_Connected:
-// 		// We got fully connected
-// 		assert(pInfo->m_hConn == g_hConnection); // We don't initiate or accept any other connections, so this should be out own connection
-// 		TEST_Printf("[%s] connected\n", pInfo->m_info.m_szConnectionDescription);
-// 		break;
-
-// 	default:
-// 		assert(false);
-// 		break;
-// 	}
-// }
 
 // Called when a connection undergoes a state transition.
 void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t *pInfo)
@@ -167,7 +85,8 @@ void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t
 
 		if (App::Get().GetPeerConnections().GetPeerConnection(pInfo->m_info.m_identityRemote) == pInfo->m_hConn)
 		{
-			g_hConnection = k_HSteamNetConnection_Invalid;
+			// g_hConnection = k_HSteamNetConnection_Invalid;
+			App::Get().GetPeerConnections().RemovePeerConnection(pInfo->m_info.m_identityRemote);
 
 			// In this example, we will bail the test whenever this happens.
 			// Was this a normal termination?
@@ -196,10 +115,10 @@ void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t
 		{
 			// Somebody's knocking
 			// Note that we assume we will only ever receive a single connection
-			assert(g_hConnection == k_HSteamNetConnection_Invalid); // not really a bug in this code, but a bug in the test
+			// assert(g_hConnection == k_HSteamNetConnection_Invalid); // not really a bug in this code, but a bug in the test
 
 			TEST_Printf("[%s] Accepting\n", pInfo->m_info.m_szConnectionDescription);
-			g_hConnection = pInfo->m_hConn;
+			// g_hConnection = pInfo->m_hConn;
 			App::Get().GetPeerConnections().RegisterNewPeerConnection(pInfo->m_info.m_identityRemote, pInfo->m_hConn);
 			SteamNetworkingSockets()->AcceptConnection(pInfo->m_hConn);
 		}
@@ -207,7 +126,7 @@ void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t
 		{
 			// Note that we will get notification when our own connection that
 			// we initiate enters this state.
-			assert(g_hConnection == pInfo->m_hConn);
+			// assert(g_hConnection == pInfo->m_hConn);
 			TEST_Printf("[%s] Entered connecting state\n", pInfo->m_info.m_szConnectionDescription);
 		}
 		break;
@@ -220,7 +139,7 @@ void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t
 
 	case k_ESteamNetworkingConnectionState_Connected:
 		// We got fully connected
-		assert(pInfo->m_hConn == g_hConnection); // We don't initiate or accept any other connections, so this should be out own connection
+		// assert(pInfo->m_hConn == g_hConnection); // We don't initiate or accept any other connections, so this should be out own connection
 		TEST_Printf("[%s] connected\n", pInfo->m_info.m_szConnectionDescription);
 		break;
 
@@ -328,8 +247,9 @@ App::App(int argc, const char **argv)
 
 	//? networking
 	{
-		SteamNetworkingIdentity identityLocal;
-		identityLocal.Clear();
+		// SteamNetworkingIdentity identityLocal;
+		// identityLocal.Clear();
+		m_identityLocal.Clear();
 		// SteamNetworkingIdentity identityRemote;
 		m_identityRemote.Clear();
 		const char *pszTrivialSignalingService = "localhost:10000";
@@ -356,7 +276,7 @@ App::App(int argc, const char **argv)
 			};
 
 			if (!strcmp(pszSwitch, "--identity-local"))
-				ParseIdentity(identityLocal);
+				ParseIdentity(m_identityLocal);
 			else if (!strcmp(pszSwitch, "--identity-remote"))
 				ParseIdentity(m_identityRemote);
 			else if (!strcmp(pszSwitch, "--signaling-server"))
@@ -370,13 +290,13 @@ App::App(int argc, const char **argv)
 				TEST_Fatal("Unexpected command line argument '%s'", pszSwitch);
 		}
 
-		if (identityLocal.IsInvalid())
+		if (m_identityLocal.IsInvalid())
 			TEST_Fatal("Must specify local identity using --identity-local");
 		if (m_identityRemote.IsInvalid() && g_eTestRole != k_ETestRole_Server)
 			TEST_Fatal("Must specify remote identity using --identity-remote");
 
 		// Initialize library, with the desired local identity
-		TEST_Init(&identityLocal);
+		TEST_Init(&m_identityLocal);
 
 		// Hardcode STUN servers
 		SteamNetworkingUtils()->SetGlobalConfigValueString(k_ESteamNetworkingConfig_P2P_STUN_ServerList, "stun.l.google.com:19302");
@@ -675,6 +595,14 @@ void App::onImGuiRender()
 
 	ImGui::Begin("Stats");
 	// ImGui::Text("Hello, world!");
+	ImGui::Text("Local identity: %s", m_identityLocal.GetGenericString());
+	ImGui::Text("Remote identity: %s", m_identityRemote.GetGenericString());
+	ImGui::Text("Connected peers");
+	const auto &peers = m_PeerConnections.GetPeerConnections();						  // Call the method on your object instance
+	for (const auto &[identity, connection] : m_PeerConnections.GetPeerConnections()) // Use const auto& for a const container
+	{
+		ImGui::Text(identity.GetGenericString());
+	}
 	ImGui::End();
 
 	ImGui::Begin("Logs");
@@ -711,7 +639,8 @@ void App::onImGuiRender()
 			// g_hConnection = m_NewTrivial.GetConnection();
 
 			// g_hConnection = TrivialSignalingServer::SendPeerConnectOffer(m_identityRemote);
-			g_hConnection = m_PeerConnections.ConnectToPeer(m_identityRemote);
+			// g_hConnection = m_PeerConnections.ConnectToPeer(m_identityRemote);
+			m_PeerConnections.ConnectToPeer(m_identityRemote);
 
 			// std::cout << "Genertic string: " << m_identityRemote.GetGenericString() << std::endl;
 			// m_PeerConnections.ConnectToPeer(m_identityRemote);

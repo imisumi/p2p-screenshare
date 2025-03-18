@@ -74,6 +74,13 @@ namespace std
 class PeerConnections
 {
 public:
+	enum class ConnectionStatus
+	{
+		Disconnected = 0,
+		Connected,
+		Connecting,
+		FailedToConnect
+	};
 	HSteamNetConnection ConnectToPeer(const SteamNetworkingIdentity &identityRemote)
 	{
 		HSteamNetConnection connection = TrivialSignalingServer::SendPeerConnectOffer(identityRemote);
@@ -95,6 +102,11 @@ public:
 	void RegisterNewPeerConnection(const SteamNetworkingIdentity &identityPeer, HSteamNetConnection connection)
 	{
 		m_PeerConnections[identityPeer] = connection;
+	}
+
+	void RemovePeerConnection(const SteamNetworkingIdentity &identityPeer)
+	{
+		m_PeerConnections.erase(identityPeer);
 	}
 
 	HSteamNetConnection GetPeerConnection(const SteamNetworkingIdentity &identityPeer)
@@ -190,6 +202,11 @@ public:
 			}
 		}
 		return incomingMessages;
+	}
+
+	const std::unordered_map<SteamNetworkingIdentity, HSteamNetConnection>& GetPeerConnections() const
+	{
+		return m_PeerConnections;
 	}
 
 private:

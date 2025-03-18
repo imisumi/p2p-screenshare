@@ -94,6 +94,7 @@ private:
 
 	TrivialSignalingServer m_NewTrivial;
 
+	SteamNetworkingIdentity m_identityLocal;
 	SteamNetworkingIdentity m_identityRemote;
 
 	PeerConnections m_PeerConnections;
