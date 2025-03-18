@@ -71,37 +71,66 @@ namespace std
 	};
 }
 
+enum class ConnectionStatus : uint8_t
+{
+	Disconnected = 0,
+	Connected,
+	Connecting,
+	Accepting,
+	Incoming,
+	FailedToConnect
+};
+
 class PeerConnections
 {
 public:
-	enum class ConnectionStatus
+	struct PeerData
 	{
-		Disconnected = 0,
-		Connected,
-		Connecting,
-		FailedToConnect
+		ConnectionStatus connectionStatus = ConnectionStatus::Disconnected;
+		HSteamNetConnection connection = k_HSteamNetConnection_Invalid;
+		const char *GetStatusString() const
+		{
+			switch (connectionStatus)
+			{
+			case ConnectionStatus::Disconnected:
+				return "Disconnected";
+			case ConnectionStatus::Connected:
+				return "Connected";
+			case ConnectionStatus::Connecting:
+				return "Connecting";
+			case ConnectionStatus::Accepting:
+				return "Accepting";
+			case ConnectionStatus::Incoming:
+				return "Incoming";
+			case ConnectionStatus::FailedToConnect:
+				return "FailedToConnect";
+			default:
+				return "Unknown";
+			}
+		}
 	};
-	HSteamNetConnection ConnectToPeer(const SteamNetworkingIdentity &identityRemote)
+	void ConnectToPeer(const SteamNetworkingIdentity &identityRemote)
 	{
+
 		HSteamNetConnection connection = TrivialSignalingServer::SendPeerConnectOffer(identityRemote);
 		if (connection == k_HSteamNetConnection_Invalid)
 		{
 			TEST_Printf("Failed to send connect request to '%s'\n", SteamNetworkingIdentityRender(identityRemote).c_str());
 			// TODO: proper error handling
+			return;
 			throw std::runtime_error("Failed to send connect request");
 		}
 		// std::cout << "Generic sting: " << identityRemote.GetGenericString() << std::endl;
 		std::string s = identityRemote.GetGenericString();
 		std::cout << "Generic sting: " << s << std::endl;
-		m_PeerConnections[identityRemote] = connection;
+		m_PeerConnections[identityRemote].connection = connection;
 		SendToAllPeers("New peer connected");
-		return connection;
 	}
 
 	// TODO: propper integration with accept connection
 	void RegisterNewPeerConnection(const SteamNetworkingIdentity &identityPeer, HSteamNetConnection connection)
 	{
-		m_PeerConnections[identityPeer] = connection;
+		m_PeerConnections[identityPeer].connection = connection;
 	}
 
 	void RemovePeerConnection(const SteamNetworkingIdentity &identityPeer)
@@ -117,7 +146,7 @@ public:
 			TEST_Printf("Failed to get peer connection: connection not found\n");
 			return k_HSteamNetConnection_Invalid;
 		}
-		return it->second;
+		return it->second.connection;
 	}
 
 	void SendToPeer(const SteamNetworkingIdentity &identityPeer, const std::string &msg)
@@ -131,7 +160,7 @@ public:
 
 		//? length() + 1???
 		EResult r = SteamNetworkingSockets()->SendMessageToConnection(
-			it->second, msg.c_str(), msg.length() + 1, k_nSteamNetworkingSend_Reliable, nullptr);
+			it->second.connection, msg.c_str(), msg.length() + 1, k_nSteamNetworkingSend_Reliable, nullptr);
 		if (r != k_EResultOK)
 		{
 			TEST_Printf("Failed to send message to peer: %d\n", r);
@@ -154,9 +183,9 @@ public:
 	std::string PollMessages()
 	{
 		//? First process incoming messages
-		for (auto &[peerIdentity, connection] : m_PeerConnections)
+		for (auto &[peerIdentity, peerData] : m_PeerConnections)
 		{
-			if (connection == k_HSteamNetConnection_Invalid)
+			if (peerData.connection == k_HSteamNetConnection_Invalid)
 			{
 				continue;
 			}
@@ -168,21 +197,21 @@ public:
 
 			// std::cout << "Sending message to peer" << std::endl;
 			SendToPeer(peerIdentity, m_OutgoingMessage);
-			m_OutgoingMessage.clear();
 		}
+		m_OutgoingMessage.clear();
 
 		// TODO: temporary
 		std::string incomingMessages;
 		//? Process outgoing messages
-		for (auto &[peerIdentity, connection] : m_PeerConnections)
+		for (auto &[peerIdentity, peerData] : m_PeerConnections)
 		{
-			if (connection == k_HSteamNetConnection_Invalid)
+			if (peerData.connection == k_HSteamNetConnection_Invalid)
 			{
 				continue;
 			}
 
 			SteamNetworkingMessage_t *pMessage;
-			int r = SteamNetworkingSockets()->ReceiveMessagesOnConnection(connection, &pMessage, 1);
+			int r = SteamNetworkingSockets()->ReceiveMessagesOnConnection(peerData.connection, &pMessage, 1);
 			assert(r == 0 || r == 1); // <0 indicates an error
 			if (r == 1)
 			{
@@ -204,14 +233,24 @@ public:
 		return incomingMessages;
 	}
 
-	const std::unordered_map<SteamNetworkingIdentity, HSteamNetConnection>& GetPeerConnections() const
+	const std::unordered_map<SteamNetworkingIdentity, PeerData> &GetPeerConnections() const
 	{
 		return m_PeerConnections;
+	}
+
+	void UpdateConnectionStatus(const SteamNetworkingIdentity &identityPeer, ConnectionStatus status)
+	{
+		if (m_PeerConnections.find(identityPeer) == m_PeerConnections.end())
+		{
+			TEST_Printf("Failed to update connection status: connection not found\n");
+			return;
+		}
+		m_PeerConnections[identityPeer].connectionStatus = status;
 	}
 
 private:
 	std::string m_OutgoingMessage;
 	// std::unordered_map<HSteamNetConnection, SteamNetworkingIdentity> m_PeerConnections;
-	std::unordered_map<SteamNetworkingIdentity, HSteamNetConnection> m_PeerConnections;
+	std::unordered_map<SteamNetworkingIdentity, PeerData> m_PeerConnections;
 	// std::unordered_map<SteamNetworkingIdentity, HSteamNetConnection, SteamNetworkingIdentityHash> m_PeerConnections;
 };

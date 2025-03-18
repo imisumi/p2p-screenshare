@@ -355,7 +355,8 @@ HSteamNetConnection TrivialSignalingServer::SendPeerConnectOffer(const SteamNetw
 		identityRemote);
 	assert(pConnSignaling);
 	HSteamNetConnection m_hConnection = SteamNetworkingSockets()->ConnectP2PCustomSignaling(pConnSignaling, &identityRemote, m_nVirtualPortRemote, (int)vecOpts.size(), vecOpts.data());
-	assert(m_hConnection != k_HSteamNetConnection_Invalid);
+	//TODO: 
+	// assert(m_hConnection != k_HSteamNetConnection_Invalid);
 
 	// Go ahead and send a message now.  The message will be queued until route finding
 	// completes.

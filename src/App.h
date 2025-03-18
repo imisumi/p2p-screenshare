@@ -23,13 +23,13 @@
 class App
 {
 public:
-	enum class ConnectionStatus
-	{
-		Disconnected = 0,
-		Connected,
-		Connecting,
-		FailedToConnect
-	};
+	// enum class ConnectionStatus
+	// {
+	// 	Disconnected = 0,
+	// 	Connected,
+	// 	Connecting,
+	// 	FailedToConnect
+	// };
 	App(int argc, const char **argv);
 	~App()
 	{
@@ -57,6 +57,8 @@ public:
 	static App& Get();
 
 	PeerConnections &GetPeerConnections() { return m_PeerConnections; }
+
+	SteamNetworkingIdentity GetRemoteIdentity() const { return m_identityRemote; }
 
 private:
 	void onUpdate();

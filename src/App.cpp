@@ -68,6 +68,9 @@ void SendMessageToPeer(const char *pszMsg)
 void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t *pInfo)
 {
 	const HSteamNetConnection temp = App::Get().GetPeerConnections().GetPeerConnection(pInfo->m_info.m_identityRemote);
+
+	const SteamNetworkingIdentity &remoteIdentity = pInfo->m_info.m_identityRemote;
+
 	// What's the state of the connection?
 	switch (pInfo->m_info.m_eState)
 	{
@@ -82,6 +85,10 @@ void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t
 
 		// Close our end
 		SteamNetworkingSockets()->CloseConnection(pInfo->m_hConn, 0, nullptr, false);
+
+		// App::Get().GetPeerConnections().UpdateConnectionStatus(remoteIdentity, ConnectionStatus::Disconnected);
+		App::Get().GetPeerConnections().RemovePeerConnection(pInfo->m_info.m_identityRemote);
+		break;
 
 		if (App::Get().GetPeerConnections().GetPeerConnection(pInfo->m_info.m_identityRemote) == pInfo->m_hConn)
 		{
@@ -117,13 +124,16 @@ void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t
 			// Note that we assume we will only ever receive a single connection
 			// assert(g_hConnection == k_HSteamNetConnection_Invalid); // not really a bug in this code, but a bug in the test
 
-			TEST_Printf("[%s] Accepting\n", pInfo->m_info.m_szConnectionDescription);
+			TEST_Printf("[%s] Accepting!\n", pInfo->m_info.m_szConnectionDescription);
 			// g_hConnection = pInfo->m_hConn;
 			App::Get().GetPeerConnections().RegisterNewPeerConnection(pInfo->m_info.m_identityRemote, pInfo->m_hConn);
-			SteamNetworkingSockets()->AcceptConnection(pInfo->m_hConn);
+			App::Get().GetPeerConnections().UpdateConnectionStatus(remoteIdentity, ConnectionStatus::Incoming);
+			// App::Get().GetPeerConnections().UpdateConnectionStatus(remoteIdentity, ConnectionStatus::Accepting);
+			// SteamNetworkingSockets()->AcceptConnection(pInfo->m_hConn);
 		}
 		else
 		{
+			App::Get().GetPeerConnections().UpdateConnectionStatus(remoteIdentity, ConnectionStatus::Connecting);
 			// Note that we will get notification when our own connection that
 			// we initiate enters this state.
 			// assert(g_hConnection == pInfo->m_hConn);
@@ -138,9 +148,11 @@ void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t
 		break;
 
 	case k_ESteamNetworkingConnectionState_Connected:
+		App::Get().GetPeerConnections().UpdateConnectionStatus(remoteIdentity, ConnectionStatus::Connected);
+		// App::Get().GetPeerConnections().UpdateConnectionStatus(remoteIdentity, ConnectionStatus::Accepting);
 		// We got fully connected
 		// assert(pInfo->m_hConn == g_hConnection); // We don't initiate or accept any other connections, so this should be out own connection
-		TEST_Printf("[%s] connected\n", pInfo->m_info.m_szConnectionDescription);
+		TEST_Printf("[%s] connected!\n", pInfo->m_info.m_szConnectionDescription);
 		break;
 
 	default:
@@ -597,12 +609,31 @@ void App::onImGuiRender()
 	// ImGui::Text("Hello, world!");
 	ImGui::Text("Local identity: %s", m_identityLocal.GetGenericString());
 	ImGui::Text("Remote identity: %s", m_identityRemote.GetGenericString());
-	ImGui::Text("Connected peers");
-	const auto &peers = m_PeerConnections.GetPeerConnections();						  // Call the method on your object instance
-	for (const auto &[identity, connection] : m_PeerConnections.GetPeerConnections()) // Use const auto& for a const container
+	ImGui::Separator();
+	ImGui::Text("Incomming connections");
+	for (const auto &[identity, peerData] : m_PeerConnections.GetPeerConnections()) // Use const auto& for a const container
 	{
-		ImGui::Text(identity.GetGenericString());
+		if (peerData.connectionStatus == ConnectionStatus::Incoming)
+		{
+			ImGui::Text("%s - %s", identity.GetGenericString(), peerData.GetStatusString());
+			ImGui::SameLine();
+			if (ImGui::Button("Accept"))
+			{
+				SteamNetworkingSockets()->AcceptConnection(peerData.connection);
+			}
+		}
 	}
+	ImGui::Separator();
+	ImGui::Text("Connected peers");
+	for (const auto &[identity, peerData] : m_PeerConnections.GetPeerConnections()) // Use const auto& for a const container
+	{
+		if (peerData.connectionStatus != ConnectionStatus::Connected)
+		{
+			continue;
+		}
+		ImGui::Text("%s - %s", identity.GetGenericString(), peerData.GetStatusString());
+	}
+	ImGui::ShowDebugLogWindow();
 	ImGui::End();
 
 	ImGui::Begin("Logs");
@@ -630,17 +661,52 @@ void App::onImGuiRender()
 	}
 	//? Connect to peer
 	{
+		// ImGui::Begin("Connect to peer");
+		// static char buf[256] = "";
+		// ImGui::InputText("Peer username", buf, IM_ARRAYSIZE(buf));
+		// if (ImGui::Button("Connect to peer"))
+		// {
+		// 	std::string username = buf;
+		// 	username = "str:" + username;
+		// 	SteamNetworkingIdentity remotePeer;
+		// 	if (!remotePeer.ParseString(username.c_str()) && !remotePeer.IsInvalid())
+		// 	{
+		// 		log("Invalid peer identity");
+		// 		// return;
+		// 	}
+		// 	else
+		// 	{
+		// 		m_PeerConnections.ConnectToPeer(remotePeer);
+		// 		std::memset(buf, 0, sizeof(buf));
+		// 	}
+
 		ImGui::Begin("Connect to peer");
-		static char buf[256] = "";
-		ImGui::InputText("Peer username", buf, IM_ARRAYSIZE(buf));
-		if (ImGui::Button("Send"))
+
+		static char usernameBuffer[256] = "";
+		ImGui::InputText("Peer username", usernameBuffer, IM_ARRAYSIZE(usernameBuffer));
+
+		if (ImGui::Button("Connect to peer") && usernameBuffer[0] != '\0')
 		{
+			//? cant conenct to ourself
+			std::string peerIdentity = "str:" + std::string(usernameBuffer);
+			SteamNetworkingIdentity remotePeer;
+
+			if ((strcmp(usernameBuffer, m_identityLocal.GetGenericString()) != 0) && remotePeer.ParseString(peerIdentity.c_str()) && !remotePeer.IsInvalid())
+			{
+				m_PeerConnections.ConnectToPeer(remotePeer);
+				usernameBuffer[0] = '\0'; // Clear the input field
+			}
+			else
+			{
+				log("Invalid peer identity");
+			}
+
 			// m_NewTrivial.ConnectToPeer(m_identityRemote);
 			// g_hConnection = m_NewTrivial.GetConnection();
 
 			// g_hConnection = TrivialSignalingServer::SendPeerConnectOffer(m_identityRemote);
 			// g_hConnection = m_PeerConnections.ConnectToPeer(m_identityRemote);
-			m_PeerConnections.ConnectToPeer(m_identityRemote);
+			// m_PeerConnections.ConnectToPeer(m_identityRemote);
 
 			// std::cout << "Genertic string: " << m_identityRemote.GetGenericString() << std::endl;
 			// m_PeerConnections.ConnectToPeer(m_identityRemote);
