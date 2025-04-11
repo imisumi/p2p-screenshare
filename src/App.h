@@ -1,5 +1,7 @@
 #pragma once
 
+// // #include <d3d11.h>
+
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
@@ -17,87 +19,133 @@
 #include <span>
 #include <memory>
 
-#include "Networking/TrivialSignalingServer.h"
-#include "Networking/PeerConnections.h"
+// #include "desktop-duplication/DesktopCapture.h"
+
+#include "Texture/Texture2D.h"
+
+// #include "Texture/Texture2D.h"
+
+#include "Log.h"
+#include "Decode.h"
+
+#include "Codec/Decoder.h"
+
+
+#include "DesktopDuplication.h"
+
+#include <d3d11.h>
+#include <windows.h>
+#include <string>
+#include "Log.h"
+
+#include "Codec/NvCodec/NvEncoder/NvEncoderD3D11.h"
+#include "Codec/Utils/NvCodecUtils.h"
+#include "Codec/Utils/NvEncoderCLIOptions.h"
+
+#include "Codec/Encode/Common/AppEncUtils.h"
+
+int initEncoder(int argc, const char **argv);
+template <class EncoderClass>
+void InitializeEncoder(EncoderClass &enc, NvEncoderInitParam encodeCLIOptions, NV_ENC_BUFFER_FORMAT eFormat);
 
 class App
 {
 public:
-	// enum class ConnectionStatus
-	// {
-	// 	Disconnected = 0,
-	// 	Connected,
-	// 	Connecting,
-	// 	FailedToConnect
-	// };
-	App(int argc, const char **argv);
-	~App()
-	{
-		m_NewTrivial.DisconnectFromServer();
-		GameNetworkingSockets_Kill();
-	}
+	App();
+	~App() = default;
 
-	// void init();
 	void run();
 	void shutdown();
 
-	inline static App &get() { return *s_Instance; }
+	// Accessors
+	static App &get();
+	ID3D11Device *getDevice() const { return m_pd3dDevice.Get(); }
+	ID3D11DeviceContext *getDeviceContext() const { return m_pd3dDeviceContext.Get(); }
+	HWND getWindow() const { return m_Hwnd; }
+	bool isRunning() const { return m_Running; }
+	float getDeltaTime() const { return m_DeltaTime; }
 
-	void resize(UINT width, UINT height)
-	{
-		m_ResizeWidth = width;
-		m_ResizeHeight = height;
-	}
+	// Window management
+	void resize(UINT width, UINT height);
+	void PerFrame();
 
-	void log(const std::string &msg)
-	{
-		m_Logs.push_back(msg);
-	}
+	// Message processing
+	void onMessage();
 
-	static App& Get();
+	void EnableVSync() { m_VSync = true; }
+	void DisableVSync() { m_VSync = false; }
 
-	PeerConnections &GetPeerConnections() { return m_PeerConnections; }
-
-	SteamNetworkingIdentity GetRemoteIdentity() const { return m_identityRemote; }
+protected:
+	// Virtual functions for derived classes to override
+	virtual void onUpdate();
+	virtual void onImGuiRender();
 
 private:
-	void onUpdate();
-	void initImGui();
-	void onMessage();
-	void onImGuiRender();
+	// Window initialization
+	bool InitWindow();
+	bool initImGui();
 
+	// DirectX initialization and cleanup
 	bool CreateDeviceD3D(HWND hWnd);
-	void CreateRenderTarget();
+	bool CreateRenderTarget();
 	void CleanupDeviceD3D();
 	void CleanupRenderTarget();
 
-	void initWinsock();
+	// Device enumeration
+	void EnumerateAdapters();
+	void EnumerateOutputs(IDXGIAdapter *pAdapter, UINT adapterIndex);
+	std::string ws2s(const std::wstring &wstr);
 
-private:
-	bool m_Running = true;
+	// DirectX resources
+	Microsoft::WRL::ComPtr<ID3D11Device> m_pd3dDevice;
+	Microsoft::WRL::ComPtr<ID3D11DeviceContext> m_pd3dDeviceContext;
+	Microsoft::WRL::ComPtr<IDXGISwapChain> m_pSwapChain;
+	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> m_mainRenderTargetView;
+	Microsoft::WRL::ComPtr<ID3D11SamplerState> m_pPointSampler;
+
+	// Window resources
+	WNDCLASSEXW m_Wc = {};
 	HWND m_Hwnd = nullptr;
-	WNDCLASSEXW m_Wc;
-	ID3D11Device *m_pd3dDevice = nullptr;
-	ID3D11DeviceContext *m_pd3dDeviceContext = nullptr;
-	IDXGISwapChain *m_pSwapChain = nullptr;
-	bool m_SwapChainOccluded = false;
-	UINT m_ResizeWidth = 0, m_ResizeHeight = 0;
-	ID3D11RenderTargetView *m_mainRenderTargetView = nullptr;
 
+	// Window state
+	bool m_Running = false;
+	bool m_SwapChainOccluded = false;
+	UINT m_ResizeWidth = 0;
+	UINT m_ResizeHeight = 0;
+	UINT m_WindowWidth = 1280;
+	UINT m_WindowHeight = 800;
+	float m_DeltaTime = 0.0f;
+
+	bool m_VSync = false; // VSync flag
+
+	// Singleton instance
 	static App *s_Instance;
 
-	//? netowrking
-	WSADATA m_WsaData;
-	bool m_Lisening = false;
 
-	std::vector<std::string> m_Logs;
+	std::unique_ptr<NvEncoderD3D11> m_Enc;
+	Texture2D m_EncodedTexture;
 
-	std::string messageToSend;
+	std::chrono::time_point<std::chrono::high_resolution_clock> m_lastEncodeTime;
+	const double m_targetFrameTimeMs = 1000.0 / 60.0; // For 60 FPS (16.67ms)
 
-	TrivialSignalingServer m_NewTrivial;
+	std::chrono::time_point<std::chrono::high_resolution_clock> m_LastCaptureTime;
+	const double m_TargetFrameCaptureTimesMs = 1000.0 / 240.0; // For 240 FPS (4.17ms)
 
-	SteamNetworkingIdentity m_identityLocal;
-	SteamNetworkingIdentity m_identityRemote;
 
-	PeerConnections m_PeerConnections;
+	std::shared_ptr<ScreenSharingDecoder > m_Decoder;
+	NvDecoderDX11 m_NvDecoderDX11;
+
+
+	ID3D11Texture2D* texture = nullptr;
+
+	// Microsoft::WRL::ComPtr<ID3D11Texture2D> outputTexture;
+	// Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> outputSRV;
+	bool successDecode= false;
+	std::vector<uint8_t> m_DecodedBuffer;
+
+	Texture2D m_NewOutputTexture;
+
+
+
+	std::shared_ptr<DesktopCapture> m_DesktopCapture;
 };

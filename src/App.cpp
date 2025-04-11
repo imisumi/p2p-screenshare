@@ -1,229 +1,188 @@
+
 #include "App.h"
 #include <stdexcept>
 #include <iostream>
+#include <sstream>
+#include <timeapi.h>
+#include <d3d11.h>
 
-#include "external/imgui/imgui.h"
-#include "external/imgui/imgui_impl_win32.h"
-#include "external/imgui/imgui_impl_dx11.h"
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_win32.h"
+#include "imgui/imgui_impl_dx11.h"
 
 #include <windows.h>
 #include <iostream>
+#include <ShellScalingApi.h>
+#include "MyAssert.h"
+#include "Codec/Decoder.h"
 
-#include <GameNetworkingSockets/steam/steamnetworkingsockets.h>
-#include <GameNetworkingSockets/steam/isteamnetworkingutils.h>
-// #include "trivial_signaling_client.h"
-
-#include "test_common.h"
-
-HSteamListenSocket g_hListenSock;
-// HSteamNetConnection g_hConnection;
-enum ETestRole
-{
-	k_ETestRole_Undefined,
-	k_ETestRole_Server,
-	k_ETestRole_Client,
-	k_ETestRole_Symmetric,
-};
-ETestRole g_eTestRole = k_ETestRole_Undefined;
-
-int g_nVirtualPortLocal = 0;  // Used when listening, and when connecting
-int g_nVirtualPortRemote = 0; // Only used when connecting
-
-// std::unique_ptr<TrivialSignalingClient> pSignaling;
-
-void Quit(int rc)
-{
-	if (rc == 0)
-	{
-		// OK, we cannot just exit the process, because we need to give
-		// the connection time to actually send the last message and clean up.
-		// If this were a TCP connection, we could just bail, because the OS
-		// would handle it.  But this is an application protocol over UDP.
-		// So give a little bit of time for good cleanup.  (Also note that
-		// we really ought to continue pumping the signaling service, but
-		// in this exampple we'll assume that no more signals need to be
-		// exchanged, since we've gotten this far.)  If we just terminated
-		// the program here, our peer could very likely timeout.  (Although
-		// it's possible that the cleanup packets have already been placed
-		// on the wire, and if they don't drop, things will get cleaned up
-		// properly.)
-		TEST_Printf("Waiting for any last cleanup packets.\n");
-		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-	}
-
-	TEST_Kill();
-	exit(rc);
-}
-
-// Send a simple string message to out peer, using reliable transport.
-void SendMessageToPeer(const char *pszMsg)
-{
-	TEST_Printf("Sending msg '%s'\n", pszMsg);
-	// EResult r = SteamNetworkingSockets()->SendMessageToConnection(
-	// 	g_hConnection, pszMsg, (int)strlen(pszMsg) + 1, k_nSteamNetworkingSend_Reliable, nullptr);
-	// assert(r == k_EResultOK);
-}
-
-// Called when a connection undergoes a state transition.
-void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t *pInfo)
-{
-	const HSteamNetConnection temp = App::Get().GetPeerConnections().GetPeerConnection(pInfo->m_info.m_identityRemote);
-
-	const SteamNetworkingIdentity &remoteIdentity = pInfo->m_info.m_identityRemote;
-
-	// What's the state of the connection?
-	switch (pInfo->m_info.m_eState)
-	{
-	case k_ESteamNetworkingConnectionState_ClosedByPeer:
-	case k_ESteamNetworkingConnectionState_ProblemDetectedLocally:
-
-		TEST_Printf("[%s] %s, reason %d: %s\n",
-					pInfo->m_info.m_szConnectionDescription,
-					(pInfo->m_info.m_eState == k_ESteamNetworkingConnectionState_ClosedByPeer ? "closed by peer" : "problem detected locally"),
-					pInfo->m_info.m_eEndReason,
-					pInfo->m_info.m_szEndDebug);
-
-		// Close our end
-		SteamNetworkingSockets()->CloseConnection(pInfo->m_hConn, 0, nullptr, false);
-
-		// App::Get().GetPeerConnections().UpdateConnectionStatus(remoteIdentity, ConnectionStatus::Disconnected);
-		App::Get().GetPeerConnections().RemovePeerConnection(pInfo->m_info.m_identityRemote);
-		break;
-
-		if (App::Get().GetPeerConnections().GetPeerConnection(pInfo->m_info.m_identityRemote) == pInfo->m_hConn)
-		{
-			// g_hConnection = k_HSteamNetConnection_Invalid;
-			App::Get().GetPeerConnections().RemovePeerConnection(pInfo->m_info.m_identityRemote);
-
-			// In this example, we will bail the test whenever this happens.
-			// Was this a normal termination?
-			int rc = 0;
-			if (rc == k_ESteamNetworkingConnectionState_ProblemDetectedLocally || pInfo->m_info.m_eEndReason != k_ESteamNetConnectionEnd_App_Generic)
-				rc = 1; // failure
-			Quit(rc);
-		}
-		else
-		{
-			// Why are we hearing about any another connection?
-			assert(false);
-		}
-
-		break;
-
-	case k_ESteamNetworkingConnectionState_None:
-		// Notification that a connection was destroyed.  (By us, presumably.)
-		// We don't need this, so ignore it.
-		break;
-
-	case k_ESteamNetworkingConnectionState_Connecting:
-
-		// Is this a connection we initiated, or one that we are receiving?
-		if (g_hListenSock != k_HSteamListenSocket_Invalid && pInfo->m_info.m_hListenSocket == g_hListenSock)
-		{
-			// Somebody's knocking
-			// Note that we assume we will only ever receive a single connection
-			// assert(g_hConnection == k_HSteamNetConnection_Invalid); // not really a bug in this code, but a bug in the test
-
-			TEST_Printf("[%s] Accepting!\n", pInfo->m_info.m_szConnectionDescription);
-			// g_hConnection = pInfo->m_hConn;
-			App::Get().GetPeerConnections().RegisterNewPeerConnection(pInfo->m_info.m_identityRemote, pInfo->m_hConn);
-			App::Get().GetPeerConnections().UpdateConnectionStatus(remoteIdentity, ConnectionStatus::Incoming);
-			// App::Get().GetPeerConnections().UpdateConnectionStatus(remoteIdentity, ConnectionStatus::Accepting);
-			// SteamNetworkingSockets()->AcceptConnection(pInfo->m_hConn);
-		}
-		else
-		{
-			App::Get().GetPeerConnections().UpdateConnectionStatus(remoteIdentity, ConnectionStatus::Connecting);
-			// Note that we will get notification when our own connection that
-			// we initiate enters this state.
-			// assert(g_hConnection == pInfo->m_hConn);
-			TEST_Printf("[%s] Entered connecting state\n", pInfo->m_info.m_szConnectionDescription);
-		}
-		break;
-
-	case k_ESteamNetworkingConnectionState_FindingRoute:
-		// P2P connections will spend a brief time here where they swap addresses
-		// and try to find a route.
-		TEST_Printf("[%s] finding route\n", pInfo->m_info.m_szConnectionDescription);
-		break;
-
-	case k_ESteamNetworkingConnectionState_Connected:
-		App::Get().GetPeerConnections().UpdateConnectionStatus(remoteIdentity, ConnectionStatus::Connected);
-		// App::Get().GetPeerConnections().UpdateConnectionStatus(remoteIdentity, ConnectionStatus::Accepting);
-		// We got fully connected
-		// assert(pInfo->m_hConn == g_hConnection); // We don't initiate or accept any other connections, so this should be out own connection
-		TEST_Printf("[%s] connected!\n", pInfo->m_info.m_szConnectionDescription);
-		break;
-
-	default:
-		assert(false);
-		break;
-	}
-}
-
+// Forward declaration
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 App *App::s_Instance = nullptr;
 
-App &App::Get()
+App &App::get()
 {
-	assert(s_Instance != nullptr);
+	MY_ASSERT(s_Instance != nullptr, "Application instance is null!");
 	return *s_Instance;
 }
 
-App::App(int argc, const char **argv)
+App::App()
 {
-	{
-		// Initialize DXGI factory
-		IDXGIFactory *pFactory = nullptr;
-		if (FAILED(CreateDXGIFactory(__uuidof(IDXGIFactory), (void **)&pFactory)))
-		{
-			std::cerr << "Failed to create DXGI factory" << std::endl;
-			throw std::runtime_error("Failed to create DXGI factory");
-		}
+	// Initialize logging system
+	timeBeginPeriod(1);
+	Log::Init();
+	LOG_INFO("App constructor started");
 
-		// Enumerate adapters (graphics cards)
-		IDXGIAdapter *pAdapter = nullptr;
-		for (UINT i = 0; pFactory->EnumAdapters(i, &pAdapter) != DXGI_ERROR_NOT_FOUND; ++i)
-		{
-			DXGI_ADAPTER_DESC adapterDesc;
-			pAdapter->GetDesc(&adapterDesc);
-
-			std::wcout << L"Adapter " << i << L": " << adapterDesc.Description << std::endl;
-
-			// Enumerate outputs (monitors) for this adapter
-			IDXGIOutput *pOutput = nullptr;
-			for (UINT j = 0; pAdapter->EnumOutputs(j, &pOutput) != DXGI_ERROR_NOT_FOUND; ++j)
-			{
-				DXGI_OUTPUT_DESC outputDesc;
-				pOutput->GetDesc(&outputDesc);
-
-				// Print monitor device name
-				std::wcout << L"  Monitor " << j << L": " << outputDesc.DeviceName << std::endl;
-
-				// Now, let's get the current resolution of the monitor
-				// We can get the display mode using EnumDisplaySettingsW
-				DEVMODEW devMode; // Use DEVMODEW (wide-character version)
-				ZeroMemory(&devMode, sizeof(devMode));
-				devMode.dmSize = sizeof(devMode);
-
-				// Enum the display settings for the monitor
-				if (EnumDisplaySettingsW(outputDesc.DeviceName, ENUM_CURRENT_SETTINGS, &devMode))
-				{
-					std::wcout << L"    Resolution: " << devMode.dmPelsWidth << L"x" << devMode.dmPelsHeight << std::endl;
-				}
-
-				pOutput->Release();
-			}
-
-			pAdapter->Release();
-		}
-
-		pFactory->Release();
-	}
-	assert(s_Instance == nullptr);
+	MY_ASSERT(s_Instance == nullptr, "Application instance already exists!");
 	s_Instance = this;
 
+	// Enumerate graphics devices for logging/debugging
+	EnumerateAdapters();
+
+	// Initialize window
+	MY_ASSERT(InitWindow(), "Failed to initialize window");
+
+	// Initialize Direct3D
+	MY_ASSERT(CreateDeviceD3D(m_Hwnd), "Failed to create D3D device");
+
+	// Initialize ImGui
+	MY_ASSERT(initImGui(), "Failed to initialize ImGui");
+
+	//? init encoder
+	const char *argv[] = {"./build/Release/AppEncD3D11.exe", "-s", "3840x1440", "-codec",
+						  "h264", "-preset", "p1", "-tuninginfo", "ultralowlatency",
+						  "-bitrate", "50M", "-fps", "60", "-gop", "30"};
+	// const char *argv[] = {"./build/Release/AppEncD3D11.exe", "-s", "3840x1440", "-codec",
+	// 					  "h264", "-preset", "p1", "-tuninginfo", "ultralowlatency",
+	// 					  "-bitrate", "5M", "-fps", "30"};
+	// initEncoder(13, argv);
+	NvEncoderInitParam encodeCLIOptions;
+	int nWidth = 0, nHeight = 0, temp = 0;
+	ParseCommandLine_AppEncD3D(15, argv, nWidth, nHeight, encodeCLIOptions, temp, true);
+
+	m_Enc = std::make_unique<NvEncoderD3D11>(m_pd3dDevice.Get(), 3840, 2160, NV_ENC_BUFFER_FORMAT_ARGB);
+	// m_Enc = std::make_unique<NvEncoderD3D11>(m_pd3dDevice.Get(), 3840, 2160, NV_ENC_BUFFER_FORMAT_ABGR);
+	// NvEncoderD3D11 enc(m_DxDevice.Get(), m_Width, m_Height, NV_ENC_BUFFER_FORMAT_ARGB);
+	InitializeEncoder(*m_Enc, encodeCLIOptions, NV_ENC_BUFFER_FORMAT_ARGB);
+
+	m_EncodedTexture.Create(m_pd3dDevice.Get(), 3840, 2160, Texture2D::TextureType::DEFAULT, Texture2D::TextureFormat::BGRA8_UNORM);
+	// m_EncodedTexture.Create(m_pd3dDevice.Get(), 3840, 2160, Texture2D::TextureType::DEFAULT, Texture2D::TextureFormat::RGBA8_UNORM);
+
+	m_Decoder = std::make_unique<ScreenSharingDecoder>(m_pd3dDevice.Get(), m_pd3dDeviceContext.Get());
+
+	cuInit(0);
+
+	// Get CUDA device
+	CUdevice cuDevice = 0;
+	cuDeviceGet(&cuDevice, 0);
+
+	// Create CUDA context
+	CUcontext cuContext = nullptr;
+	cuCtxCreate(&cuContext, CU_CTX_SCHED_BLOCKING_SYNC, cuDevice);
+	bool success = m_NvDecoderDX11.Initialize(cuContext, m_pd3dDevice, m_pd3dDeviceContext,
+											  cudaVideoCodec_H264, // Example codec, adjust as needed
+											  3840, 2160);
+
+	m_NewOutputTexture.CreateWithCustomFlags(
+		m_pd3dDevice.Get(),
+		3840,
+		2160,
+		D3D11_BIND_SHADER_RESOURCE,
+		D3D11_RESOURCE_MISC_SHARED | D3D11_RESOURCE_MISC_SHARED,
+		Texture2D::TextureFormat::BGR8);
+
+	m_DesktopCapture = std::make_unique<DesktopCapture>(m_pd3dDevice, m_pd3dDeviceContext);
+	m_DesktopCapture->InitDesktopDuplication();
+
+	LOG_INFO("App constructor completed successfully");
+}
+
+void App::EnumerateAdapters()
+{
+	// Initialize DXGI factory
+	IDXGIFactory *pFactory = nullptr;
+	HRESULT hr = CreateDXGIFactory(__uuidof(IDXGIFactory), (void **)&pFactory);
+
+	MY_ASSERT(SUCCEEDED(hr), "Failed to create DXGI factory");
+	if (FAILED(hr))
+	{
+		LOG_ERROR("Failed to create DXGI factory: {0:x}", hr);
+		return;
+	}
+
+	// Enumerate adapters (graphics cards)
+	IDXGIAdapter *pAdapter = nullptr;
+	for (UINT i = 0; pFactory->EnumAdapters(i, &pAdapter) != DXGI_ERROR_NOT_FOUND; ++i)
+	{
+		DXGI_ADAPTER_DESC adapterDesc;
+		pAdapter->GetDesc(&adapterDesc);
+
+		std::wstringstream ss;
+		ss << L"GPU " << i << L": " << adapterDesc.Description
+		   << L" (VRAM: " << adapterDesc.DedicatedVideoMemory / (1024 * 1024) << L" MB)";
+		LOG_INFO(ws2s(ss.str()));
+
+		// Enumerate outputs (monitors) for this adapter
+		EnumerateOutputs(pAdapter, i);
+
+		pAdapter->Release();
+	}
+
+	pFactory->Release();
+}
+
+void App::EnumerateOutputs(IDXGIAdapter *pAdapter, UINT adapterIndex)
+{
+	if (!pAdapter)
+		return;
+
+	// Enumerate outputs (monitors) for this adapter
+	IDXGIOutput *pOutput = nullptr;
+	for (UINT j = 0; pAdapter->EnumOutputs(j, &pOutput) != DXGI_ERROR_NOT_FOUND; ++j)
+	{
+		DXGI_OUTPUT_DESC outputDesc;
+		pOutput->GetDesc(&outputDesc);
+
+		// Get current display mode
+		DEVMODEW devMode;
+		ZeroMemory(&devMode, sizeof(devMode));
+		devMode.dmSize = sizeof(devMode);
+
+		if (EnumDisplaySettingsW(outputDesc.DeviceName, ENUM_CURRENT_SETTINGS, &devMode))
+		{
+			std::wstringstream ss;
+			ss << L"  Monitor " << j << L": " << outputDesc.DeviceName
+			   << L" (" << devMode.dmPelsWidth << L"x" << devMode.dmPelsHeight
+			   << L" @" << devMode.dmDisplayFrequency << L"Hz)";
+			LOG_INFO(ws2s(ss.str()));
+		}
+
+		pOutput->Release();
+	}
+}
+
+std::string App::ws2s(const std::wstring &wstr)
+{
+	// Simple wide string to string conversion
+	std::string result;
+	result.reserve(wstr.length());
+	for (wchar_t c : wstr)
+	{
+		if (c <= 127)
+		{
+			result.push_back(static_cast<char>(c));
+		}
+		else
+		{
+			result.push_back('?');
+		}
+	}
+	return result;
+}
+
+bool App::InitWindow()
+{
 	m_Wc = {
 		sizeof(m_Wc),
 		CS_CLASSDC,
@@ -235,154 +194,135 @@ App::App(int argc, const char **argv)
 		nullptr,
 		nullptr,
 		nullptr,
-		L"ImGui Example",
+		L"ImGuiApp",
 		nullptr};
 
-	::RegisterClassExW(&m_Wc);
-	m_Hwnd = ::CreateWindowW(m_Wc.lpszClassName, L"Dear ImGui DirectX11 Example", WS_OVERLAPPEDWINDOW, 100, 100, 1280, 800, nullptr, nullptr, m_Wc.hInstance, nullptr);
-
-	// Initialize Direct3D
-	if (!CreateDeviceD3D(m_Hwnd))
+	if (!::RegisterClassExW(&m_Wc))
 	{
-		CleanupDeviceD3D();
+		LOG_ERROR("Failed to register window class");
+		return false;
+	}
+
+	// Create window with sensible defaults
+	RECT desktopRect;
+	GetClientRect(GetDesktopWindow(), &desktopRect);
+	int defaultWidth = std::min(2560, (int)(desktopRect.right * 0.8f));
+	int defaultHeight = std::min(1440, (int)(desktopRect.bottom * 0.8f));
+
+	m_Hwnd = ::CreateWindowW(
+		m_Wc.lpszClassName,
+		L"MyApplication",
+		WS_OVERLAPPEDWINDOW,
+		CW_USEDEFAULT,
+		CW_USEDEFAULT,
+		defaultWidth,
+		defaultHeight,
+		nullptr,
+		nullptr,
+		m_Wc.hInstance,
+		nullptr);
+
+	if (!m_Hwnd)
+	{
+		LOG_ERROR("Failed to create window");
 		::UnregisterClassW(m_Wc.lpszClassName, m_Wc.hInstance);
-		throw std::runtime_error("Failed to create D3D device.");
+		return false;
 	}
 
 	// Show the window
 	::ShowWindow(m_Hwnd, SW_SHOWDEFAULT);
 	::UpdateWindow(m_Hwnd);
 
-	initImGui();
+	SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
 
-	initWinsock();
-
-	//? networking
+	// And use the Game Mode API if on Windows 10+
+	typedef BOOL(WINAPI * PFN_SET_GAME_MODE)(BOOL);
+	// HMODULE hGameMode = LoadLibrary(ws2s(L"GameMode.dll"));
+	HMODULE hGameMode = LoadLibraryA("GameMode.dll");
+	if (hGameMode)
 	{
-		// SteamNetworkingIdentity identityLocal;
-		// identityLocal.Clear();
-		m_identityLocal.Clear();
-		// SteamNetworkingIdentity identityRemote;
-		m_identityRemote.Clear();
-		const char *pszTrivialSignalingService = "localhost:10000";
-		// const char *pszTrivialSignalingService = "141.148.233.31:6969";
-
-		g_eTestRole = k_ETestRole_Symmetric;
-
-		// Parse the command line
-		for (int idxArg = 1; idxArg < argc; ++idxArg)
+		PFN_SET_GAME_MODE pfnSetGameMode =
+			(PFN_SET_GAME_MODE)GetProcAddress(hGameMode, "SetGameMode");
+		if (pfnSetGameMode)
 		{
-			const char *pszSwitch = argv[idxArg];
-
-			auto GetArg = [&]() -> const char *
-			{
-				if (idxArg + 1 >= argc)
-					TEST_Fatal("Expected argument after %s", pszSwitch);
-				return argv[++idxArg];
-			};
-			auto ParseIdentity = [&](SteamNetworkingIdentity &x)
-			{
-				const char *pszArg = GetArg();
-				if (!x.ParseString(pszArg))
-					TEST_Fatal("'%s' is not a valid identity string", pszArg);
-			};
-
-			if (!strcmp(pszSwitch, "--identity-local"))
-				ParseIdentity(m_identityLocal);
-			else if (!strcmp(pszSwitch, "--identity-remote"))
-				ParseIdentity(m_identityRemote);
-			else if (!strcmp(pszSwitch, "--signaling-server"))
-				pszTrivialSignalingService = GetArg();
-			else if (!strcmp(pszSwitch, "--log"))
-			{
-				const char *pszArg = GetArg();
-				TEST_InitLog(pszArg);
-			}
-			else
-				TEST_Fatal("Unexpected command line argument '%s'", pszSwitch);
+			pfnSetGameMode(TRUE);
 		}
-
-		if (m_identityLocal.IsInvalid())
-			TEST_Fatal("Must specify local identity using --identity-local");
-		if (m_identityRemote.IsInvalid() && g_eTestRole != k_ETestRole_Server)
-			TEST_Fatal("Must specify remote identity using --identity-remote");
-
-		// Initialize library, with the desired local identity
-		TEST_Init(&m_identityLocal);
-
-		// Hardcode STUN servers
-		SteamNetworkingUtils()->SetGlobalConfigValueString(k_ESteamNetworkingConfig_P2P_STUN_ServerList, "stun.l.google.com:19302");
-
-		// Hardcode TURN servers
-		// comma seperated setting lists
-		// const char* turnList = "turn:123.45.45:3478";
-		// const char* userList = "username";
-		// const char* passList = "pass";
-
-		// SteamNetworkingUtils()->SetGlobalConfigValueString(k_ESteamNetworkingConfig_P2P_TURN_ServerList, turnList);
-		// SteamNetworkingUtils()->SetGlobalConfigValueString(k_ESteamNetworkingConfig_P2P_TURN_UserList, userList);
-		// SteamNetworkingUtils()->SetGlobalConfigValueString(k_ESteamNetworkingConfig_P2P_TURN_PassList, passList);
-
-		// Allow sharing of any kind of ICE address.
-		// We don't have any method of relaying (TURN) in this example, so we are essentially
-		// forced to disclose our public address if we want to pierce NAT.  But if we
-		// had relay fallback, or if we only wanted to connect on the LAN, we could restrict
-		// to only sharing private addresses.
-		SteamNetworkingUtils()->SetGlobalConfigValueInt32(k_ESteamNetworkingConfig_P2P_Transport_ICE_Enable, k_nSteamNetworkingConfig_P2P_Transport_ICE_Enable_All);
-		// SteamNetworkingUtils()->SetGlobalConfigValueInt32(k_ESteamNetworkingConfig_ip, k_nSteamNetworkingCon);
-		// SteamNetworkingUtils()->SetGlobalConfigValueInt32(k_ESteamNetworkingConfig_P2P_Transport_ICE_Enable, k_nSteamNetworkingConfig_P2P_Transport_ICE_Enable_Public );
-		// SteamNetworkingUtils()->SetGlobalConfigValueInt32(k_ESteamNetworkingConfig_P2P_Transport_ICE_Enable, k_nSteamNetworkingConfig_P2P_Transport_ICE_Enable_Private );
-
-		//? throw error if not conencted to the server
-		// pSignaling->Poll();
-
-		SteamNetworkingUtils()->SetGlobalCallback_SteamNetConnectionStatusChanged(OnSteamNetConnectionStatusChanged);
-
-		// Comment this line in for more detailed spew about signals, route finding, ICE, etc
-		SteamNetworkingUtils()->SetGlobalConfigValueInt32(k_ESteamNetworkingConfig_LogLevel_P2PRendezvous, k_ESteamNetworkingSocketsDebugOutputType_Verbose);
-
-		// Create listen socket to receive connections on, unless we are the client
-		if (g_eTestRole == k_ETestRole_Symmetric)
-		{
-
-			// Currently you must create a listen socket to use symmetric mode,
-			// even if you know that you will always create connections "both ways".
-			// In the future we might try to remove this requirement.  It is a bit
-			// less efficient, since it always triggered the race condition case
-			// where both sides create their own connections, and then one side
-			// decides to their theirs away.  If we have a listen socket, then
-			// it can be the case that one peer will receive the incoming connection
-			// from the other peer, and since he has a listen socket, can save
-			// the connection, and then implicitly accept it when he initiates his
-			// own connection.  Without the listen socket, if an incoming connection
-			// request arrives before we have started connecting out, then we are forced
-			// to ignore it, as the app has given no indication that it desires to
-			// receive inbound connections at all.
-			TEST_Printf("Creating listen socket in symmetric mode, local virtual port %d\n", g_nVirtualPortLocal);
-			SteamNetworkingConfigValue_t opt;
-			opt.SetInt32(k_ESteamNetworkingConfig_SymmetricConnect, 1); // << Note we set symmetric mode on the listen socket
-			g_hListenSock = SteamNetworkingSockets()->CreateListenSocketP2P(g_nVirtualPortLocal, 1, &opt);
-			assert(g_hListenSock != k_HSteamListenSocket_Invalid);
-		}
+		FreeLibrary(hGameMode);
 	}
+
+	LOG_INFO("Window initialized successfully");
+	return true;
+}
+
+bool App::initImGui()
+{
+	// Setup ImGui context
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO &io = ImGui::GetIO();
+
+	// Enable features
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+
+	// Setup style
+	ImGui::StyleColorsDark();
+	ImGuiStyle &style = ImGui::GetStyle();
+	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 	{
-		m_NewTrivial.ConnectToServer("127.0.0.1:10000");
-		// m_NewTrivial.GetConnectionDebugMessage();
-		TEST_Printf("Connection debug message: %s\n", m_NewTrivial.GetConnectionDebugMessage().c_str());
+		style.WindowRounding = 0.0f;
+		style.Colors[ImGuiCol_WindowBg].w = 1.0f;
 	}
-	// g_hConnection = m_NewTrivial.GetConnection();
+
+	// Setup Platform/Renderer bindings
+	if (!ImGui_ImplWin32_Init(m_Hwnd))
+	{
+		LOG_ERROR("Failed to initialize ImGui Win32 backend");
+		return false;
+	}
+
+	if (!ImGui_ImplDX11_Init(m_pd3dDevice.Get(), m_pd3dDeviceContext.Get()))
+	{
+		LOG_ERROR("Failed to initialize ImGui DX11 backend");
+		ImGui_ImplWin32_Shutdown();
+		ImGui::DestroyContext();
+		return false;
+	}
+
+	// Enable DPI awareness
+	ImGui_ImplWin32_EnableDpiAwareness();
+
+	// Create samplers
+	D3D11_SAMPLER_DESC samplerDesc = {};
+	samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+	samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+	samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+	samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+	samplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+	samplerDesc.MinLOD = 0;
+	samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+
+	HRESULT hr = m_pd3dDevice->CreateSamplerState(&samplerDesc, &m_pPointSampler);
+	if (FAILED(hr))
+	{
+		LOG_ERROR("Failed to create sampler state: {0:x}", hr);
+		return false;
+	}
+
+	LOG_INFO("ImGui initialized successfully");
+	return true;
 }
 
 bool App::CreateDeviceD3D(HWND hWnd)
 {
+	MY_ASSERT(hWnd != nullptr, "Invalid window handle");
+
 	// Setup swap chain
-	DXGI_SWAP_CHAIN_DESC sd;
-	ZeroMemory(&sd, sizeof(sd));
+	DXGI_SWAP_CHAIN_DESC sd = {};
 	sd.BufferCount = 2;
-	sd.BufferDesc.Width = 0;
-	sd.BufferDesc.Height = 0;
 	sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	// sd.BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
 	sd.BufferDesc.RefreshRate.Numerator = 60;
 	sd.BufferDesc.RefreshRate.Denominator = 1;
 	sd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
@@ -393,44 +333,145 @@ bool App::CreateDeviceD3D(HWND hWnd)
 	sd.Windowed = TRUE;
 	sd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
 
+	// Create device
+	// UINT createDeviceFlags = 0;
 	UINT createDeviceFlags = 0;
-	// createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
-	D3D_FEATURE_LEVEL featureLevel;
+#ifdef MYAPP_DEBUG
+	createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
+#endif
+	// createDeviceFlags |= D3D11_CREATE_DEVICE_THR;
+
 	const D3D_FEATURE_LEVEL featureLevelArray[2] = {
 		D3D_FEATURE_LEVEL_11_0,
 		D3D_FEATURE_LEVEL_10_0,
 	};
-	HRESULT res = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, createDeviceFlags, featureLevelArray, 2, D3D11_SDK_VERSION, &sd, &m_pSwapChain, &m_pd3dDevice, &featureLevel, &m_pd3dDeviceContext);
-	if (res == DXGI_ERROR_UNSUPPORTED) // Try high-performance WARP software driver if hardware is not available.
-		res = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_WARP, nullptr, createDeviceFlags, featureLevelArray, 2, D3D11_SDK_VERSION, &sd, &m_pSwapChain, &m_pd3dDevice, &featureLevel, &m_pd3dDeviceContext);
-	if (res != S_OK)
-		return false;
 
-	CreateRenderTarget();
+	D3D_FEATURE_LEVEL featureLevel;
+	HRESULT res = D3D11CreateDeviceAndSwapChain(
+		nullptr,
+		D3D_DRIVER_TYPE_HARDWARE,
+		nullptr,
+		createDeviceFlags,
+		// featureLevelArray,
+		// 2,
+		nullptr,
+		0,
+		D3D11_SDK_VERSION,
+		&sd,
+		&m_pSwapChain,
+		&m_pd3dDevice,
+		&featureLevel,
+		&m_pd3dDeviceContext);
+
+	if (res == DXGI_ERROR_UNSUPPORTED)
+	{
+		LOG_WARN("Hardware device not supported, falling back to WARP device");
+		// Try WARP device instead
+		res = D3D11CreateDeviceAndSwapChain(
+			nullptr,
+			D3D_DRIVER_TYPE_WARP,
+			nullptr,
+			createDeviceFlags,
+			// featureLevelArray,
+			// 2,
+			nullptr,
+			0,
+			D3D11_SDK_VERSION,
+			&sd,
+			&m_pSwapChain,
+			&m_pd3dDevice,
+			&featureLevel,
+			&m_pd3dDeviceContext);
+	}
+
+	if (FAILED(res))
+	{
+		LOG_ERROR("Failed to create D3D11 device: {0:x}", res);
+		return false;
+	}
+
+	// Log feature level
+	switch (featureLevel)
+	{
+	case D3D_FEATURE_LEVEL_11_0:
+		LOG_INFO("D3D Feature Level: 11.0");
+		break;
+	case D3D_FEATURE_LEVEL_10_1:
+		LOG_INFO("D3D Feature Level: 10.1");
+		break;
+	case D3D_FEATURE_LEVEL_10_0:
+		LOG_INFO("D3D Feature Level: 10.0");
+		break;
+	default:
+		LOG_INFO("D3D Feature Level: Unknown");
+		break;
+	}
+
+	if (!CreateRenderTarget())
+	{
+		LOG_ERROR("Failed to create render target");
+		return false;
+	}
+
 	return true;
 }
 
-void App::CreateRenderTarget()
+bool App::CreateRenderTarget()
 {
+	MY_ASSERT(m_pSwapChain != nullptr, "Swap chain is null");
+	MY_ASSERT(m_pd3dDevice != nullptr, "Device is null");
+
+	// Create a render target view
 	ID3D11Texture2D *pBackBuffer;
-	m_pSwapChain->GetBuffer(0, IID_PPV_ARGS(&pBackBuffer));
-	m_pd3dDevice->CreateRenderTargetView(pBackBuffer, nullptr, &m_mainRenderTargetView);
+	HRESULT hr = m_pSwapChain->GetBuffer(0, IID_PPV_ARGS(&pBackBuffer));
+	if (FAILED(hr))
+	{
+		LOG_ERROR("Failed to get back buffer: {0:x}", hr);
+		return false;
+	}
+
+	// hr = m_pd3dDevice->CreateRenderTargetView(pBackBuffer, nullptr, &m_mainRenderTargetView);
+	hr = m_pd3dDevice->CreateRenderTargetView(pBackBuffer, nullptr, m_mainRenderTargetView.GetAddressOf());
 	pBackBuffer->Release();
+
+	if (FAILED(hr))
+	{
+		LOG_ERROR("Failed to create render target view: {0:x}", hr);
+		return false;
+	}
+
+	LOG_INFO("Render target created successfully");
+	return true;
+}
+
+void App::CleanupRenderTarget()
+{
+	if (m_mainRenderTargetView)
+	{
+		// m_mainRenderTargetView->Release();
+		// m_mainRenderTargetView = nullptr;
+		m_mainRenderTargetView.Reset();
+	}
 }
 
 void App::CleanupDeviceD3D()
 {
+	LOG_INFO("Cleaning up D3D resources");
+
 	CleanupRenderTarget();
+
 	if (m_pSwapChain)
 	{
 		m_pSwapChain->Release();
 		m_pSwapChain = nullptr;
 	}
+
 	if (m_pd3dDeviceContext)
 	{
 		m_pd3dDeviceContext->Release();
 		m_pd3dDeviceContext = nullptr;
 	}
+
 	if (m_pd3dDevice)
 	{
 		m_pd3dDevice->Release();
@@ -438,343 +479,517 @@ void App::CleanupDeviceD3D()
 	}
 }
 
-void App::CleanupRenderTarget()
-{
-	if (m_mainRenderTargetView)
-	{
-		m_mainRenderTargetView->Release();
-		m_mainRenderTargetView = nullptr;
-	}
-}
-
-void App::initImGui()
-{
-	// Setup Dear ImGui context
-	IMGUI_CHECKVERSION();
-	ImGui::CreateContext();
-	ImGuiIO &io = ImGui::GetIO();
-	(void)io;
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;  // Enable Gamepad Controls
-	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;	  // Enable Docking
-	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;	  // Enable Multi-Viewport / Platform Windows
-	// io.ConfigViewportsNoAutoMerge = true;
-	// io.ConfigViewportsNoTaskBarIcon = true;
-	// io.ConfigViewportsNoDefaultParent = true;
-	// io.ConfigDockingAlwaysTabBar = true;
-	// io.ConfigDockingTransparentPayload = true;
-	// io.ConfigFlags |= ImGuiConfigFlags_DpiEnableScaleFonts;     // FIXME-DPI: Experimental. THIS CURRENTLY DOESN'T WORK AS EXPECTED. DON'T USE IN USER APP!
-	// io.ConfigFlags |= ImGuiConfigFlags_DpiEnableScaleViewports; // FIXME-DPI: Experimental.
-
-	// Setup Dear ImGui style
-	ImGui::StyleColorsDark();
-	// ImGui::StyleColorsLight();
-
-	// When viewports are enabled we tweak WindowRounding/WindowBg so platform windows can look identical to regular ones.
-	ImGuiStyle &style = ImGui::GetStyle();
-	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-	{
-		style.WindowRounding = 0.0f;
-		style.Colors[ImGuiCol_WindowBg].w = 1.0f;
-	}
-
-	// Setup Platform/Renderer backends
-	ImGui_ImplWin32_Init(m_Hwnd);
-	ImGui_ImplDX11_Init(m_pd3dDevice, m_pd3dDeviceContext);
-
-	// Load Fonts
-	// - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
-	// - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
-	// - If the file cannot be loaded, the function will return a nullptr. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
-	// - The fonts will be rasterized at a given size (w/ oversampling) and stored into a texture when calling ImFontAtlas::Build()/GetTexDataAsXXXX(), which ImGui_ImplXXXX_NewFrame below will call.
-	// - Use '#define IMGUI_ENABLE_FREETYPE' in your imconfig file to use Freetype for higher quality font rendering.
-	// - Read 'docs/FONTS.md' for more instructions and details.
-	// - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
-	// io.Fonts->AddFontDefault();
-	// io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\segoeui.ttf", 18.0f);
-	// io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
-	// io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf", 16.0f);
-	// io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
-	// ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, nullptr, io.Fonts->GetGlyphRangesJapanese());
-	// IM_ASSERT(font != nullptr);
-}
-
 void App::run()
 {
-	MSG msg;
-	while (m_Running)
+	LOG_INFO("Application starting main loop");
+	m_Running = true;
+
+	try
 	{
-		onMessage();
-		if (m_Running == false)
+		MSG msg = {};
+		while (m_Running)
 		{
-			break;
-		}
+			// Process messages
+			onMessage();
+			if (!m_Running)
+				break;
 
-		// Handle window being minimized or screen locked
-		if (m_SwapChainOccluded && m_pSwapChain->Present(0, DXGI_PRESENT_TEST) == DXGI_STATUS_OCCLUDED)
-		{
-			m_SwapChainOccluded = true;
-			std::cout << "Window is occluded not rendering ui" << std::endl;
+			// Render frame
+			{
+				// ScopedTimer timer("App::PerFrame");
+				PerFrame();
+			}
+			// std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		}
-		else
-		{
-			m_SwapChainOccluded = false;
-		}
-
-		// Handle window resize (we don't resize directly in the WM_SIZE handler)
-		if (m_ResizeWidth != 0 && m_ResizeHeight != 0)
-		{
-			// m_DesktopCapture.stopCapture();
-			CleanupRenderTarget();
-			m_pSwapChain->ResizeBuffers(0, m_ResizeWidth, m_ResizeHeight, DXGI_FORMAT_UNKNOWN, 0);
-			m_ResizeWidth = m_ResizeHeight = 0;
-			CreateRenderTarget();
-			// m_DesktopCapture.reset(m_pd3dDevice, m_pd3dDeviceContext, 0);
-			// m_DesktopCapture.startCapture();
-		}
-
-		onUpdate();
-
-		// Render the frame, but only if the window is not occluded.
-		if (m_SwapChainOccluded == false)
-		{
-			onImGuiRender();
-		}
-
-		// Present
-		HRESULT hr = m_pSwapChain->Present(1, 0); // Present with vsync
-		// HRESULT hr = m_pSwapChain->Present(0, 0); // Present without vsync
-		m_SwapChainOccluded = (hr == DXGI_STATUS_OCCLUDED);
 	}
+	catch (const std::exception &e)
+	{
+		LOG_ERROR("Exception in main loop: {0}", e.what());
+		MY_ASSERT(false, e.what());
+	}
+
+	LOG_INFO("Application exiting main loop");
+
+	// Cleanup resources
+	shutdown();
+}
+
+void App::PerFrame()
+{
+	MY_ASSERT(m_pSwapChain != nullptr, "SwapChain is null in PerFrame");
+
+	// Check if window is minimized
+	// if (m_SwapChainOccluded)
+	// {
+	// 	if (m_pSwapChain->Present(0, DXGI_PRESENT_TEST) == DXGI_STATUS_OCCLUDED)
+	// 	{
+	// 		// Skip rendering if occluded
+	// 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	// 		return;
+	// 	}
+	// 	m_SwapChainOccluded = false;
+	// }
+
+	// Handle window resize
+	if (m_ResizeWidth > 0 && m_ResizeHeight > 0)
+	{
+		LOG_INFO("Resizing swap chain: {0}x{1}", m_ResizeWidth, m_ResizeHeight);
+		CleanupRenderTarget();
+		HRESULT hr = m_pSwapChain->ResizeBuffers(0, m_ResizeWidth, m_ResizeHeight, DXGI_FORMAT_UNKNOWN, 0);
+		if (FAILED(hr))
+		{
+			LOG_ERROR("Failed to resize swap chain: {0:x}", hr);
+		}
+		m_ResizeWidth = m_ResizeHeight = 0;
+		CreateRenderTarget();
+	}
+
+	// Update application state
+	{
+		// ScopedTimer timer("	App::onUpdate");
+		onUpdate();
+	}
+
+	// Render the frame if not occluded
+	// if (!m_SwapChainOccluded)
+	{
+		onImGuiRender();
+	}
+
+	// Present the frame with vsync
+	HRESULT hr = m_pSwapChain->Present(m_VSync, 0);
+	if (hr == DXGI_STATUS_OCCLUDED)
+	{
+		m_SwapChainOccluded = true;
+		LOG_INFO("Swap chain occluded");
+	}
+	else if (FAILED(hr))
+	{
+		LOG_ERROR("Present failed: {0:x}", hr);
+		MY_ASSERT(false, "SwapChain Present failed");
+	}
+}
+
+std::vector<uint8_t> EncFrame(NvEncoderD3D11 &enc)
+{
+	static std::vector<uint8_t> out;
+	out.clear();
+	std::vector<NvEncOutputFrame> packets;
+	enc.EncodeFrame(packets);
+
+	for (const auto &packet : packets)
+		out.insert(out.end(), packet.frame.begin(), packet.frame.end());
+
+	return out;
 }
 
 void App::onUpdate()
 {
-	// return;
-	// Check for incoming signals, and dispatch them
-	// pSignaling->Poll();
+	m_DesktopCapture->CaptureFrame();
 
-	// Check callbacks
-	TEST_PumpCallbacks();
+	// Example: update delta time
+	static float lastTime = 0.0f;
+	float currentTime = GetTickCount() * 0.001f;
+	m_DeltaTime = currentTime - lastTime;
+	lastTime = currentTime;
 
-	std::string message = m_PeerConnections.PollMessages();
-	if (message.length() > 0)
 	{
-		log(message);
+		// ScopedTimer timer("		App::encode");
+
+		// Calculate time since last encode
+		auto currentTime = std::chrono::high_resolution_clock::now();
+		auto elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+							 currentTime - m_lastEncodeTime)
+							 .count();
+
+		// Only encode if enough time has passed
+		if (elapsedMs >= m_targetFrameTimeMs)
+		{
+			const NvEncInputFrame *encoderInputFrame = m_Enc->GetNextInputFrame();
+			ID3D11Texture2D *pTexBgra = reinterpret_cast<ID3D11Texture2D *>(encoderInputFrame->inputPtr);
+
+			Texture2D::CopyTexture(m_pd3dDeviceContext.Get(), m_DesktopCapture->GetTexture(), pTexBgra);
+
+			m_DecodedBuffer = EncFrame(*m_Enc);
+			m_lastEncodeTime = currentTime;
+
+			// ScopedTimer timer("		App::decode");
+			if (!m_DecodedBuffer.empty())
+			{
+				// Decode the frame
+				// successDecode = m_NvDecoderDX11.DecodeFrame(m_DecodedBuffer, outputTexture.Get());
+				successDecode = m_NvDecoderDX11.DecodeFrame(m_DecodedBuffer, m_NewOutputTexture.GetTexture());
+				if (!successDecode)
+				{
+					LOG_ERROR("Failed to decode frame");
+					return;
+				}
+			}
+		}
 	}
-
-	// If we have a connection, then poll it for messages
-	// if (g_hConnection != k_HSteamNetConnection_Invalid)
-	// {
-	// 	if (messageToSend.length() > 0)
-	// 	{
-	// 		std::cout << "Sending message to peer" << std::endl;
-	// 		SendMessageToPeer(messageToSend.c_str());
-	// 		messageToSend = "";
-	// 	}
-	// 	SteamNetworkingMessage_t *pMessage;
-	// 	int r = SteamNetworkingSockets()->ReceiveMessagesOnConnection(g_hConnection, &pMessage, 1);
-	// 	assert(r == 0 || r == 1); // <0 indicates an error
-	// 	if (r == 1)
-	// 	{
-	// 		std::string m = pMessage->m_identityPeer.GetGenericString();
-	// 		// In this example code we will assume all messages are '\0'-terminated strings.
-	// 		// Obviously, this is not secure.
-	// 		TEST_Printf("Received message '%s'\n", pMessage->GetData());
-	// 		// std::string message = reinterpret_cast<char *>(pMessage->GetData());
-	// 		const char *message = reinterpret_cast<const char *>(pMessage->GetData());
-	// 		m = m + ": " + message;
-	// 		log(m);
-	// 		// log(message);
-
-	// 		// Free message struct and buffer.
-	// 		pMessage->Release();
-	// 	}
-	// }
 }
 
 void App::onImGuiRender()
 {
+	MY_ASSERT(m_pd3dDeviceContext != nullptr, "Device context is null in onImGuiRender");
+	MY_ASSERT(m_mainRenderTargetView != nullptr, "Render target view is null in onImGuiRender");
 
-	ImGuiIO &io = ImGui::GetIO();
-	(void)io;
 	// Start the Dear ImGui frame
 	ImGui_ImplDX11_NewFrame();
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
 
+	// Create dockspace
 	ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport());
 
-	ImGui::Begin("Stats");
-	// ImGui::Text("Hello, world!");
-	ImGui::Text("Local identity: %s", m_identityLocal.GetGenericString());
-	ImGui::Text("Remote identity: %s", m_identityRemote.GetGenericString());
-	ImGui::Separator();
-	ImGui::Text("Incomming connections");
-	for (const auto &[identity, peerData] : m_PeerConnections.GetPeerConnections()) // Use const auto& for a const container
+	// Main application window
 	{
-		if (peerData.connectionStatus == ConnectionStatus::Incoming)
+		ImGui::Begin("Application");
+
+		ImGui::Text("FPS: %.1f (%.3f ms/frame)", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
+
+		if (ImGui::CollapsingHeader("Settings", ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			ImGui::Text("%s - %s", identity.GetGenericString(), peerData.GetStatusString());
-			ImGui::SameLine();
-			if (ImGui::Button("Accept"))
+		}
+
+		// Add your custom UI here
+		if (ImGui::BeginTabBar("MyTabs"))
+		{
+			if (ImGui::BeginTabItem("Main"))
 			{
-				SteamNetworkingSockets()->AcceptConnection(peerData.connection);
+				ImGui::Text("Application is running...");
+				ImGui::Text("Window size: %dx%d", m_WindowWidth, m_WindowHeight);
+
+				ImGui::EndTabItem();
 			}
-		}
-	}
-	ImGui::Separator();
-	ImGui::Text("Connected peers");
-	for (const auto &[identity, peerData] : m_PeerConnections.GetPeerConnections()) // Use const auto& for a const container
-	{
-		if (peerData.connectionStatus != ConnectionStatus::Connected)
-		{
-			continue;
-		}
-		ImGui::Text("%s - %s", identity.GetGenericString(), peerData.GetStatusString());
-	}
-	ImGui::ShowDebugLogWindow();
-	ImGui::End();
 
-	ImGui::Begin("Logs");
-	for (const auto &log : m_Logs)
-	{
-		ImGui::Text(log.c_str());
-	}
-	ImGui::End();
-
-	// text input
-	{
-		ImGui::Begin("input");
-		static char buf[256] = "";
-		ImGui::InputText("Input", buf, IM_ARRAYSIZE(buf));
-		if (ImGui::Button("Send"))
-		{
-			// log(buf);
-			// SendMessageToPeer(buf);
-			messageToSend = buf;
-			m_PeerConnections.SetOutgoingMessage(messageToSend);
-			std::memset(buf, 0, sizeof(buf));
-			std::cout << "Message sent: " << messageToSend << std::endl;
-		}
-		ImGui::End();
-	}
-	//? Connect to peer
-	{
-		// ImGui::Begin("Connect to peer");
-		// static char buf[256] = "";
-		// ImGui::InputText("Peer username", buf, IM_ARRAYSIZE(buf));
-		// if (ImGui::Button("Connect to peer"))
-		// {
-		// 	std::string username = buf;
-		// 	username = "str:" + username;
-		// 	SteamNetworkingIdentity remotePeer;
-		// 	if (!remotePeer.ParseString(username.c_str()) && !remotePeer.IsInvalid())
-		// 	{
-		// 		log("Invalid peer identity");
-		// 		// return;
-		// 	}
-		// 	else
-		// 	{
-		// 		m_PeerConnections.ConnectToPeer(remotePeer);
-		// 		std::memset(buf, 0, sizeof(buf));
-		// 	}
-
-		ImGui::Begin("Connect to peer");
-
-		static char usernameBuffer[256] = "";
-		ImGui::InputText("Peer username", usernameBuffer, IM_ARRAYSIZE(usernameBuffer));
-
-		if (ImGui::Button("Connect to peer") && usernameBuffer[0] != '\0')
-		{
-			//? cant conenct to ourself
-			std::string peerIdentity = "str:" + std::string(usernameBuffer);
-			SteamNetworkingIdentity remotePeer;
-
-			if ((strcmp(usernameBuffer, m_identityLocal.GetGenericString()) != 0) && remotePeer.ParseString(peerIdentity.c_str()) && !remotePeer.IsInvalid())
+			if (ImGui::BeginTabItem("Debug"))
 			{
-				m_PeerConnections.ConnectToPeer(remotePeer);
-				usernameBuffer[0] = '\0'; // Clear the input field
+				if (ImGui::Button("Test Assert"))
+				{
+					MY_ASSERT(false, "Test assert button pressed");
+				}
+
+				ImGui::EndTabItem();
+			}
+
+			ImGui::EndTabBar();
+		}
+
+		ImGui::End();
+
+
+		{
+			ImGui::Begin("DXGI Desktop Duplication");
+			ImVec2 availableRegion = ImGui::GetContentRegionAvail();
+
+			uint32_t textureWidth = m_DesktopCapture->GetWidth();
+			uint32_t textureHeight = m_DesktopCapture->GetHeight();
+
+			float aspectRatio = (float)textureWidth / (float)textureHeight;
+			ImVec2 imageSize;
+			if (availableRegion.x / aspectRatio <= availableRegion.y)
+			{
+				// Width constrained
+				imageSize.x = availableRegion.x;
+				imageSize.y = availableRegion.x / aspectRatio;
 			}
 			else
 			{
-				log("Invalid peer identity");
+				// Height constrained
+				imageSize.y = availableRegion.y;
+				imageSize.x = availableRegion.y * aspectRatio;
 			}
 
-			// m_NewTrivial.ConnectToPeer(m_identityRemote);
-			// g_hConnection = m_NewTrivial.GetConnection();
+			// Center the image in the available region
+			ImVec2 cursorPos = ImGui::GetCursorPos();
+			ImGui::SetCursorPos(ImVec2(
+				cursorPos.x + (availableRegion.x - imageSize.x) * 0.5f,
+				cursorPos.y + (availableRegion.y - imageSize.y) * 0.5f));
 
-			// g_hConnection = TrivialSignalingServer::SendPeerConnectOffer(m_identityRemote);
-			// g_hConnection = m_PeerConnections.ConnectToPeer(m_identityRemote);
-			// m_PeerConnections.ConnectToPeer(m_identityRemote);
+			ImGui::Image((ImTextureID)m_DesktopCapture->GetTexture().GetShaderResourceView(), imageSize);
 
-			// std::cout << "Genertic string: " << m_identityRemote.GetGenericString() << std::endl;
-			// m_PeerConnections.ConnectToPeer(m_identityRemote);
-			// if (m_PeerConnections.GetPeerConnection(m_identityRemote) != k_HSteamNetConnection_Invalid)
-			// {
-			// 	g_hConnection = m_PeerConnections.GetPeerConnection(m_identityRemote);
-			// }
-			// log(buf);
-			// SendMessageToPeer(buf);
-			// messageToSend = buf;
-			// std::memset(buf, 0, sizeof(buf));
-			// std::cout << "Message sent: " << messageToSend << std::endl;
+			ImGui::End();
 		}
-		ImGui::End();
+
+		// ImGui::End();
+		{
+			ImGui::Begin("decoded texture");
+			ImVec2 availableRegion = ImGui::GetContentRegionAvail();
+
+			uint32_t textureWidth = m_DesktopCapture->GetWidth();
+			uint32_t textureHeight = m_DesktopCapture->GetHeight();
+
+			float aspectRatio = (float)textureWidth / (float)textureHeight;
+			ImVec2 imageSize;
+			if (availableRegion.x / aspectRatio <= availableRegion.y)
+			{
+				// Width constrained
+				imageSize.x = availableRegion.x;
+				imageSize.y = availableRegion.x / aspectRatio;
+			}
+			else
+			{
+				// Height constrained
+				imageSize.y = availableRegion.y;
+				imageSize.x = availableRegion.y * aspectRatio;
+			}
+
+			// Center the image in the available region
+			ImVec2 cursorPos = ImGui::GetCursorPos();
+			ImGui::SetCursorPos(ImVec2(
+				cursorPos.x + (availableRegion.x - imageSize.x) * 0.5f,
+				cursorPos.y + (availableRegion.y - imageSize.y) * 0.5f));
+			// Add the tint color parameter (RGBA) with full alpha
+			// ImGui::Image((ImTextureID)outputSRV.Get(), {1920, 1080}, ImVec2(0, 0), ImVec2(1, 1), ImVec4(1, 1, 1, 1));
+			// ImGui::Image(reinterpret_cast<ImTextureID>(outputSRV.Get()), imageSize);
+			ImGui::Image(reinterpret_cast<ImTextureID>(m_NewOutputTexture.GetShaderResourceView()), imageSize);
+
+			ImGui::End();
+		}
 	}
 
 	// Rendering
 	ImGui::Render();
-	// const float clear_color_with_alpha[4] = {clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w};
-	m_pd3dDeviceContext->OMSetRenderTargets(1, &m_mainRenderTargetView, nullptr);
-	// g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, clear_color_with_alpha); //? Clear the main render target view, but with docking enabled this is not visible.
+
+	// Clear the render target
+	// m_pd3dDeviceContext->ClearRenderTargetView(m_mainRenderTargetView, m_ClearColor);
+	// m_pd3dDeviceContext->OMSetRenderTargets(1, &m_mainRenderTargetView, nullptr);
+	m_pd3dDeviceContext->OMSetRenderTargets(1, m_mainRenderTargetView.GetAddressOf(), nullptr);
+
+	// Render ImGui draw data
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
 	// Update and Render additional Platform Windows
-	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 	{
 		ImGui::UpdatePlatformWindows();
 		ImGui::RenderPlatformWindowsDefault();
 	}
 }
 
+// void App::onMessage()
+// {
+//     MSG msg;
+//     while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
+//     {
+//         // Special handling for quit messages
+//         if (msg.message == WM_QUIT)
+//         {
+//             LOG_INFO("Received WM_QUIT message");
+//             m_Running = false;
+//             return;
+//         }
+
+//         // Let ImGui process the message
+//         if (!ImGui_ImplWin32_WndProcHandler(msg.hwnd, msg.message, msg.wParam, msg.lParam))
+//         {
+//             ::TranslateMessage(&msg);
+//             ::DispatchMessage(&msg);
+//         }
+//     }
+// }
+
 void App::onMessage()
 {
-	// Poll and handle messages (inputs, window resize, etc.)
-	// See the WndProc() function below for our to dispatch events to the Win32 backend.
+	// Process messages, but limit how many we handle per frame to stay responsive
+	const int MAX_MESSAGES_PER_FRAME = 10;
+	int messageCount = 0;
+
 	MSG msg;
-	while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
+	while (messageCount < MAX_MESSAGES_PER_FRAME && ::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
 	{
 		::TranslateMessage(&msg);
 		::DispatchMessage(&msg);
+
 		if (msg.message == WM_QUIT)
+		{
 			m_Running = false;
+			return;
+		}
+
+		messageCount++;
 	}
 }
+// void App::onMessage()
+// {
+// 	// Poll and handle messages (inputs, window resize, etc.)
+// 	// See the WndProc() function below for our to dispatch events to the Win32 backend.
+// 	MSG msg;
+// 	while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
+// 	{
+// 		// log message
+// 		// std::cout << "message: " << msg.message << std::endl;
+
+// 		::TranslateMessage(&msg);
+// 		// std::cout << "translated message" << std::endl;
+// 		::DispatchMessage(&msg);
+// 		// std::cout << "dispatched message" << std::endl;
+// 		if (msg.message == WM_QUIT)
+// 			m_Running = false;
+// 	}
+// }
+
 void App::shutdown()
 {
-	// Cleanup
+	LOG_INFO("Application shutting down");
+
+	m_Running = false;
+
+	if (m_pPointSampler)
+	{
+		m_pPointSampler->Release();
+		m_pPointSampler = nullptr;
+	}
+
+	// Cleanup ImGui
 	ImGui_ImplDX11_Shutdown();
 	ImGui_ImplWin32_Shutdown();
 	ImGui::DestroyContext();
 
+	// Cleanup D3D
 	CleanupDeviceD3D();
-	::DestroyWindow(m_Hwnd);
-	::UnregisterClassW(m_Wc.lpszClassName, m_Wc.hInstance);
+
+	// Destroy window
+	if (m_Hwnd)
+	{
+		::DestroyWindow(m_Hwnd);
+		m_Hwnd = nullptr;
+	}
+
+	// Unregister window class
+	if (m_Wc.hInstance)
+	{
+		::UnregisterClassW(m_Wc.lpszClassName, m_Wc.hInstance);
+		m_Wc = {};
+	}
+
+	LOG_INFO("Application shutdown complete");
+	s_Instance = nullptr;
 }
 
-#ifndef WM_DPICHANGED
-#define WM_DPICHANGED 0x02E0 // From Windows SDK 8.1+ headers
-#endif
+void App::resize(UINT width, UINT height)
+{
+	if (m_pd3dDevice != nullptr && width > 0 && height > 0)
+	{
+		m_WindowWidth = width;
+		m_WindowHeight = height;
+		m_ResizeWidth = width;
+		m_ResizeHeight = height;
+		LOG_INFO("Window resize requested: {0}x{1}", width, height);
+	}
+}
 
-// Forward declare message handler from imgui_impl_win32.cpp
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-// Win32 message handler
-// You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
-// - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
-// - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
-// Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
+// Static WndProc implementation
+LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+	if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
+		return true;
+
+	App &app = App::get();
+	static bool inSystemMenu = false;
+
+	switch (msg)
+	{
+	case WM_SIZE:
+		if (wParam != SIZE_MINIMIZED)
+		{
+			app.resize(LOWORD(lParam), HIWORD(lParam));
+		}
+		return 0;
+
+	case WM_SYSCOMMAND:
+		if ((wParam & 0xFFF0) == SC_MOUSEMENU || (wParam & 0xFFF0) == SC_KEYMENU)
+		{
+			if (!inSystemMenu)
+			{
+				inSystemMenu = true;
+				::SetTimer(hWnd, 1, 1, NULL);
+				LOG_INFO("Entering system menu");
+			}
+		}
+		else if (wParam == SC_CLOSE)
+		{
+			LOG_INFO("WM_SYSCOMMAND: SC_CLOSE");
+		}
+		break;
+
+	case WM_ENTERMENULOOP:
+		inSystemMenu = true;
+		::SetTimer(hWnd, 1, 1, NULL);
+		LOG_INFO("Entering menu loop");
+		break;
+
+	case WM_EXITMENULOOP:
+		inSystemMenu = false;
+		::KillTimer(hWnd, 1);
+		LOG_INFO("Exiting menu loop");
+		break;
+
+	case WM_ENTERSIZEMOVE:
+		// app.DisableVSync();
+		::SetTimer(hWnd, 1, 0, NULL);
+		LOG_INFO("Entering size/move modal loop");
+		break;
+
+	case WM_EXITSIZEMOVE:
+		// app.EnableVSync();
+		::KillTimer(hWnd, 1);
+		LOG_INFO("Exiting size/move modal loop");
+		break;
+	case WM_TIMER:
+		if (wParam == 1)
+		{
+			// Process messages but don't let them block rendering
+			MSG msg;
+			while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
+			{
+				if (msg.message == WM_QUIT)
+				{
+					::PostQuitMessage(0);
+					return 0;
+				}
+
+				::TranslateMessage(&msg);
+				::DispatchMessage(&msg);
+			}
+
+			// Force render with no vsync during modal operations
+			app.PerFrame();
+			return 0;
+		}
+		break;
+		// case WM_TIMER:
+		// 	if (wParam == 1)
+		// 	{
+		// 		// Process frames during modal states
+		// 		app.PerFrame();
+		// 	}
+		// 	break;
+		// return 0;
+
+	case WM_DESTROY:
+		::PostQuitMessage(0);
+		return 0;
+
+	case WM_DPICHANGED:
+		if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DpiEnableScaleViewports)
+		{
+			const RECT *suggested_rect = (RECT *)lParam;
+			::SetWindowPos(hWnd, nullptr,
+						   suggested_rect->left, suggested_rect->top,
+						   suggested_rect->right - suggested_rect->left,
+						   suggested_rect->bottom - suggested_rect->top,
+						   SWP_NOZORDER | SWP_NOACTIVATE);
+		}
+		break;
+	}
+	return ::DefWindowProcW(hWnd, msg, wParam, lParam);
+}
+
+#if 0
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
@@ -782,41 +997,106 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 	App &app = App::get();
 
+	// Add this flag to track menu state
+	static bool inSystemMenu = false;
+
 	switch (msg)
 	{
 	case WM_SIZE:
 		if (wParam == SIZE_MINIMIZED)
 			return 0;
-		// m_ResizeWidth = (UINT)LOWORD(lParam); // Queue resize
-		// m_ResizeHeight = (UINT)HIWORD(lParam);
 		app.resize((UINT)LOWORD(lParam), (UINT)HIWORD(lParam));
 		return 0;
 	case WM_SYSCOMMAND:
-		if ((wParam & 0xfff0) == SC_KEYMENU) // Disable ALT application menu
-			return 0;
+		std::cout << "WM_SYSCOMMAND: " << std::hex << wParam << std::dec << std::endl;
+
+		// Check specifically for system menu activation
+		if ((wParam & 0xFFF0) == SC_MOUSEMENU || (wParam & 0xFFF0) == SC_KEYMENU)
+		{
+			// System menu is being activated via mouse or keyboard
+			if (!inSystemMenu)
+			{
+				inSystemMenu = true;
+				::SetTimer(hWnd, 1, 1, NULL);
+				std::cout << "Entering system menu" << std::endl;
+			}
+		}
+		break;
+	case WM_NCRBUTTONUP:
+		// This often happens just before the system menu appears
+		std::cout << "WM_NCRBUTTONUP (possibly opening system menu)" << std::endl;
+		if (!inSystemMenu)
+		{
+			inSystemMenu = true;
+			::SetTimer(hWnd, 1, 1, NULL);
+			std::cout << "Potentially entering system menu" << std::endl;
+		}
+		break;
+	case WM_COMMAND:
+	case WM_CANCELMODE:
+	case WM_CAPTURECHANGED:
+		// These can signal the end of a menu operation
+		if (inSystemMenu)
+		{
+			inSystemMenu = false;
+			::KillTimer(hWnd, 1);
+			std::cout << "Potentially exiting system menu" << std::endl;
+		}
+		break;
+	case WM_ENTERSIZEMOVE:
+		::SetTimer(hWnd, 1, 1, NULL);
+		std::cout << "Entering size/move modal loop" << std::endl;
+		break;
+	case WM_EXITSIZEMOVE:
+		::KillTimer(hWnd, 1);
+		std::cout << "Exiting size/move modal loop" << std::endl;
+		break;
+	case WM_ENTERMENULOOP:
+		inSystemMenu = true;
+		::SetTimer(hWnd, 1, 1, NULL);
+		std::cout << "Entering menu loop" << std::endl;
+		break;
+	case WM_EXITMENULOOP:
+		inSystemMenu = false;
+		::KillTimer(hWnd, 1);
+		std::cout << "Exiting menu loop" << std::endl;
+		break;
+	case WM_LBUTTONUP:
+	case WM_RBUTTONUP:
+		// Mouse button up outside the menu might close it
+		if (inSystemMenu)
+		{
+			// Check if we should exit system menu state
+			POINT pt;
+			GetCursorPos(&pt);
+			RECT rcWindow;
+			GetWindowRect(hWnd, &rcWindow);
+
+			// If click is outside window bounds, probably menu closed
+			if (pt.x < rcWindow.left || pt.x > rcWindow.right ||
+				pt.y < rcWindow.top || pt.y > rcWindow.bottom)
+			{
+				inSystemMenu = false;
+				::KillTimer(hWnd, 1);
+				std::cout << "Mouse click outside window - exiting system menu" << std::endl;
+			}
+		}
+		break;
+	case WM_TIMER:
+		if (wParam == 1)
+		{
+			// This is our modal operation timer - perform necessary updates here
+			app.PerFrame();
+		}
 		break;
 	case WM_DESTROY:
 		::PostQuitMessage(0);
 		return 0;
-	case WM_DPICHANGED:
-		if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DpiEnableScaleViewports)
-		{
-			// const int dpi = HIWORD(wParam);
-			// printf("WM_DPICHANGED to %d (%.0f%%)\n", dpi, (float)dpi / 96.0f * 100.0f);
-			const RECT *suggested_rect = (RECT *)lParam;
-			::SetWindowPos(hWnd, nullptr, suggested_rect->left, suggested_rect->top, suggested_rect->right - suggested_rect->left, suggested_rect->bottom - suggested_rect->top, SWP_NOZORDER | SWP_NOACTIVATE);
-		}
+	default:
+		// You can comment this out if it produces too much log output
+		// std::cout << "message: " << msg << std::endl;
 		break;
 	}
 	return ::DefWindowProcW(hWnd, msg, wParam, lParam);
 }
-
-void App::initWinsock()
-{
-	//? init winsock
-	if (WSAStartup(MAKEWORD(2, 2), &m_WsaData) != 0)
-	{
-		std::cerr << "WSAStartup failed\n";
-		std::exit(-1);
-	}
-}
+#endif
