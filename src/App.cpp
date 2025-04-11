@@ -44,10 +44,15 @@ App::App()
 	MY_ASSERT(InitWindow(), "Failed to initialize window");
 
 	// Initialize Direct3D
-	MY_ASSERT(CreateDeviceD3D(m_Hwnd), "Failed to create D3D device");
+	// MY_ASSERT(CreateDeviceD3D(m_Hwnd), "Failed to create D3D device");
 
-	// Initialize ImGui
-	MY_ASSERT(initImGui(), "Failed to initialize ImGui");
+	// // Initialize ImGui
+	// MY_ASSERT(initImGui(), "Failed to initialize ImGui");
+
+	m_Renderer = std::make_unique<Renderer>();
+	m_Renderer->Initialize(m_Hwnd, 2560, 1440);
+	m_Renderer->InitImGui(m_Hwnd);
+	// m_Renderer->
 
 	//? init encoder
 	const char *argv[] = {"./build/Release/AppEncD3D11.exe", "-s", "3840x1440", "-codec",
@@ -61,15 +66,15 @@ App::App()
 	int nWidth = 0, nHeight = 0, temp = 0;
 	ParseCommandLine_AppEncD3D(15, argv, nWidth, nHeight, encodeCLIOptions, temp, true);
 
-	m_Enc = std::make_unique<NvEncoderD3D11>(m_pd3dDevice.Get(), 3840, 2160, NV_ENC_BUFFER_FORMAT_ARGB);
+	m_Enc = std::make_unique<NvEncoderD3D11>(m_Renderer->GetDevice(), 3840, 2160, NV_ENC_BUFFER_FORMAT_ARGB);
 	// m_Enc = std::make_unique<NvEncoderD3D11>(m_pd3dDevice.Get(), 3840, 2160, NV_ENC_BUFFER_FORMAT_ABGR);
 	// NvEncoderD3D11 enc(m_DxDevice.Get(), m_Width, m_Height, NV_ENC_BUFFER_FORMAT_ARGB);
 	InitializeEncoder(*m_Enc, encodeCLIOptions, NV_ENC_BUFFER_FORMAT_ARGB);
 
-	m_EncodedTexture.Create(m_pd3dDevice.Get(), 3840, 2160, Texture2D::TextureType::DEFAULT, Texture2D::TextureFormat::BGRA8_UNORM);
+	m_EncodedTexture.Create(m_Renderer->GetDevice(), 3840, 2160, Texture2D::TextureType::DEFAULT, Texture2D::TextureFormat::BGRA8_UNORM);
 	// m_EncodedTexture.Create(m_pd3dDevice.Get(), 3840, 2160, Texture2D::TextureType::DEFAULT, Texture2D::TextureFormat::RGBA8_UNORM);
 
-	m_Decoder = std::make_unique<ScreenSharingDecoder>(m_pd3dDevice.Get(), m_pd3dDeviceContext.Get());
+	m_Decoder = std::make_unique<ScreenSharingDecoder>(m_Renderer->GetDevice(), m_Renderer->GetContext());
 
 	cuInit(0);
 
@@ -80,19 +85,19 @@ App::App()
 	// Create CUDA context
 	CUcontext cuContext = nullptr;
 	cuCtxCreate(&cuContext, CU_CTX_SCHED_BLOCKING_SYNC, cuDevice);
-	bool success = m_NvDecoderDX11.Initialize(cuContext, m_pd3dDevice, m_pd3dDeviceContext,
+	bool success = m_NvDecoderDX11.Initialize(cuContext, m_Renderer->GetDevice(), m_Renderer->GetContext(),
 											  cudaVideoCodec_H264, // Example codec, adjust as needed
 											  3840, 2160);
 
 	m_NewOutputTexture.CreateWithCustomFlags(
-		m_pd3dDevice.Get(),
+		m_Renderer->GetDevice(),
 		3840,
 		2160,
 		D3D11_BIND_SHADER_RESOURCE,
 		D3D11_RESOURCE_MISC_SHARED | D3D11_RESOURCE_MISC_SHARED,
 		Texture2D::TextureFormat::BGR8);
 
-	m_DesktopCapture = std::make_unique<DesktopCapture>(m_pd3dDevice, m_pd3dDeviceContext);
+	m_DesktopCapture = std::make_unique<DesktopCapture>(m_Renderer->GetDevice(), m_Renderer->GetContext());
 	m_DesktopCapture->InitDesktopDuplication();
 
 	LOG_INFO("App constructor completed successfully");
@@ -254,230 +259,8 @@ bool App::InitWindow()
 	return true;
 }
 
-bool App::initImGui()
-{
-	// Setup ImGui context
-	IMGUI_CHECKVERSION();
-	ImGui::CreateContext();
-	ImGuiIO &io = ImGui::GetIO();
 
-	// Enable features
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
-	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
-	// Setup style
-	ImGui::StyleColorsDark();
-	ImGuiStyle &style = ImGui::GetStyle();
-	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-	{
-		style.WindowRounding = 0.0f;
-		style.Colors[ImGuiCol_WindowBg].w = 1.0f;
-	}
-
-	// Setup Platform/Renderer bindings
-	if (!ImGui_ImplWin32_Init(m_Hwnd))
-	{
-		LOG_ERROR("Failed to initialize ImGui Win32 backend");
-		return false;
-	}
-
-	if (!ImGui_ImplDX11_Init(m_pd3dDevice.Get(), m_pd3dDeviceContext.Get()))
-	{
-		LOG_ERROR("Failed to initialize ImGui DX11 backend");
-		ImGui_ImplWin32_Shutdown();
-		ImGui::DestroyContext();
-		return false;
-	}
-
-	// Enable DPI awareness
-	ImGui_ImplWin32_EnableDpiAwareness();
-
-	// Create samplers
-	D3D11_SAMPLER_DESC samplerDesc = {};
-	samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
-	samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
-	samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
-	samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
-	samplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-	samplerDesc.MinLOD = 0;
-	samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
-
-	HRESULT hr = m_pd3dDevice->CreateSamplerState(&samplerDesc, &m_pPointSampler);
-	if (FAILED(hr))
-	{
-		LOG_ERROR("Failed to create sampler state: {0:x}", hr);
-		return false;
-	}
-
-	LOG_INFO("ImGui initialized successfully");
-	return true;
-}
-
-bool App::CreateDeviceD3D(HWND hWnd)
-{
-	MY_ASSERT(hWnd != nullptr, "Invalid window handle");
-
-	// Setup swap chain
-	DXGI_SWAP_CHAIN_DESC sd = {};
-	sd.BufferCount = 2;
-	sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	sd.BufferDesc.RefreshRate.Numerator = 60;
-	sd.BufferDesc.RefreshRate.Denominator = 1;
-	sd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
-	sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	sd.OutputWindow = hWnd;
-	sd.SampleDesc.Count = 1;
-	sd.SampleDesc.Quality = 0;
-	sd.Windowed = TRUE;
-	sd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
-
-	// Create device
-	// UINT createDeviceFlags = 0;
-	UINT createDeviceFlags = 0;
-#ifdef MYAPP_DEBUG
-	createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
-#endif
-	// createDeviceFlags |= D3D11_CREATE_DEVICE_THR;
-
-	const D3D_FEATURE_LEVEL featureLevelArray[2] = {
-		D3D_FEATURE_LEVEL_11_0,
-		D3D_FEATURE_LEVEL_10_0,
-	};
-
-	D3D_FEATURE_LEVEL featureLevel;
-	HRESULT res = D3D11CreateDeviceAndSwapChain(
-		nullptr,
-		D3D_DRIVER_TYPE_HARDWARE,
-		nullptr,
-		createDeviceFlags,
-		// featureLevelArray,
-		// 2,
-		nullptr,
-		0,
-		D3D11_SDK_VERSION,
-		&sd,
-		&m_pSwapChain,
-		&m_pd3dDevice,
-		&featureLevel,
-		&m_pd3dDeviceContext);
-
-	if (res == DXGI_ERROR_UNSUPPORTED)
-	{
-		LOG_WARN("Hardware device not supported, falling back to WARP device");
-		// Try WARP device instead
-		res = D3D11CreateDeviceAndSwapChain(
-			nullptr,
-			D3D_DRIVER_TYPE_WARP,
-			nullptr,
-			createDeviceFlags,
-			// featureLevelArray,
-			// 2,
-			nullptr,
-			0,
-			D3D11_SDK_VERSION,
-			&sd,
-			&m_pSwapChain,
-			&m_pd3dDevice,
-			&featureLevel,
-			&m_pd3dDeviceContext);
-	}
-
-	if (FAILED(res))
-	{
-		LOG_ERROR("Failed to create D3D11 device: {0:x}", res);
-		return false;
-	}
-
-	// Log feature level
-	switch (featureLevel)
-	{
-	case D3D_FEATURE_LEVEL_11_0:
-		LOG_INFO("D3D Feature Level: 11.0");
-		break;
-	case D3D_FEATURE_LEVEL_10_1:
-		LOG_INFO("D3D Feature Level: 10.1");
-		break;
-	case D3D_FEATURE_LEVEL_10_0:
-		LOG_INFO("D3D Feature Level: 10.0");
-		break;
-	default:
-		LOG_INFO("D3D Feature Level: Unknown");
-		break;
-	}
-
-	if (!CreateRenderTarget())
-	{
-		LOG_ERROR("Failed to create render target");
-		return false;
-	}
-
-	return true;
-}
-
-bool App::CreateRenderTarget()
-{
-	MY_ASSERT(m_pSwapChain != nullptr, "Swap chain is null");
-	MY_ASSERT(m_pd3dDevice != nullptr, "Device is null");
-
-	// Create a render target view
-	ID3D11Texture2D *pBackBuffer;
-	HRESULT hr = m_pSwapChain->GetBuffer(0, IID_PPV_ARGS(&pBackBuffer));
-	if (FAILED(hr))
-	{
-		LOG_ERROR("Failed to get back buffer: {0:x}", hr);
-		return false;
-	}
-
-	// hr = m_pd3dDevice->CreateRenderTargetView(pBackBuffer, nullptr, &m_mainRenderTargetView);
-	hr = m_pd3dDevice->CreateRenderTargetView(pBackBuffer, nullptr, m_mainRenderTargetView.GetAddressOf());
-	pBackBuffer->Release();
-
-	if (FAILED(hr))
-	{
-		LOG_ERROR("Failed to create render target view: {0:x}", hr);
-		return false;
-	}
-
-	LOG_INFO("Render target created successfully");
-	return true;
-}
-
-void App::CleanupRenderTarget()
-{
-	if (m_mainRenderTargetView)
-	{
-		// m_mainRenderTargetView->Release();
-		// m_mainRenderTargetView = nullptr;
-		m_mainRenderTargetView.Reset();
-	}
-}
-
-void App::CleanupDeviceD3D()
-{
-	LOG_INFO("Cleaning up D3D resources");
-
-	CleanupRenderTarget();
-
-	if (m_pSwapChain)
-	{
-		m_pSwapChain->Release();
-		m_pSwapChain = nullptr;
-	}
-
-	if (m_pd3dDeviceContext)
-	{
-		m_pd3dDeviceContext->Release();
-		m_pd3dDeviceContext = nullptr;
-	}
-
-	if (m_pd3dDevice)
-	{
-		m_pd3dDevice->Release();
-		m_pd3dDevice = nullptr;
-	}
-}
 
 void App::run()
 {
@@ -516,7 +299,7 @@ void App::run()
 
 void App::PerFrame()
 {
-	MY_ASSERT(m_pSwapChain != nullptr, "SwapChain is null in PerFrame");
+	// MY_ASSERT(m_Renderer->GetSwapChain() != nullptr, "SwapChain is null in PerFrame");
 
 	// Check if window is minimized
 	// if (m_SwapChainOccluded)
@@ -534,14 +317,8 @@ void App::PerFrame()
 	if (m_ResizeWidth > 0 && m_ResizeHeight > 0)
 	{
 		LOG_INFO("Resizing swap chain: {0}x{1}", m_ResizeWidth, m_ResizeHeight);
-		CleanupRenderTarget();
-		HRESULT hr = m_pSwapChain->ResizeBuffers(0, m_ResizeWidth, m_ResizeHeight, DXGI_FORMAT_UNKNOWN, 0);
-		if (FAILED(hr))
-		{
-			LOG_ERROR("Failed to resize swap chain: {0:x}", hr);
-		}
+		m_Renderer->Resize(m_ResizeWidth, m_ResizeHeight);
 		m_ResizeWidth = m_ResizeHeight = 0;
-		CreateRenderTarget();
 	}
 
 	// Update application state
@@ -557,17 +334,7 @@ void App::PerFrame()
 	}
 
 	// Present the frame with vsync
-	HRESULT hr = m_pSwapChain->Present(m_VSync, 0);
-	if (hr == DXGI_STATUS_OCCLUDED)
-	{
-		m_SwapChainOccluded = true;
-		LOG_INFO("Swap chain occluded");
-	}
-	else if (FAILED(hr))
-	{
-		LOG_ERROR("Present failed: {0:x}", hr);
-		MY_ASSERT(false, "SwapChain Present failed");
-	}
+	m_Renderer->EndFrame();
 }
 
 std::vector<uint8_t> EncFrame(NvEncoderD3D11 &enc)
@@ -608,7 +375,7 @@ void App::onUpdate()
 			const NvEncInputFrame *encoderInputFrame = m_Enc->GetNextInputFrame();
 			ID3D11Texture2D *pTexBgra = reinterpret_cast<ID3D11Texture2D *>(encoderInputFrame->inputPtr);
 
-			Texture2D::CopyTexture(m_pd3dDeviceContext.Get(), m_DesktopCapture->GetTexture(), pTexBgra);
+			Texture2D::CopyTexture(m_Renderer->GetContext(), m_DesktopCapture->GetTexture(), pTexBgra);
 
 			m_DecodedBuffer = EncFrame(*m_Enc);
 			m_lastEncodeTime = currentTime;
@@ -631,16 +398,7 @@ void App::onUpdate()
 
 void App::onImGuiRender()
 {
-	MY_ASSERT(m_pd3dDeviceContext != nullptr, "Device context is null in onImGuiRender");
-	MY_ASSERT(m_mainRenderTargetView != nullptr, "Render target view is null in onImGuiRender");
-
-	// Start the Dear ImGui frame
-	ImGui_ImplDX11_NewFrame();
-	ImGui_ImplWin32_NewFrame();
-	ImGui::NewFrame();
-
-	// Create dockspace
-	ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport());
+	m_Renderer->BeginImGuiFrame();
 
 	// Main application window
 	{
@@ -749,46 +507,9 @@ void App::onImGuiRender()
 		}
 	}
 
-	// Rendering
-	ImGui::Render();
-
-	// Clear the render target
-	// m_pd3dDeviceContext->ClearRenderTargetView(m_mainRenderTargetView, m_ClearColor);
-	// m_pd3dDeviceContext->OMSetRenderTargets(1, &m_mainRenderTargetView, nullptr);
-	m_pd3dDeviceContext->OMSetRenderTargets(1, m_mainRenderTargetView.GetAddressOf(), nullptr);
-
-	// Render ImGui draw data
-	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
-
-	// Update and Render additional Platform Windows
-	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-	{
-		ImGui::UpdatePlatformWindows();
-		ImGui::RenderPlatformWindowsDefault();
-	}
+	m_Renderer->EndImGuiFrame();
 }
 
-// void App::onMessage()
-// {
-//     MSG msg;
-//     while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
-//     {
-//         // Special handling for quit messages
-//         if (msg.message == WM_QUIT)
-//         {
-//             LOG_INFO("Received WM_QUIT message");
-//             m_Running = false;
-//             return;
-//         }
-
-//         // Let ImGui process the message
-//         if (!ImGui_ImplWin32_WndProcHandler(msg.hwnd, msg.message, msg.wParam, msg.lParam))
-//         {
-//             ::TranslateMessage(&msg);
-//             ::DispatchMessage(&msg);
-//         }
-//     }
-// }
 
 void App::onMessage()
 {
@@ -811,24 +532,6 @@ void App::onMessage()
 		messageCount++;
 	}
 }
-// void App::onMessage()
-// {
-// 	// Poll and handle messages (inputs, window resize, etc.)
-// 	// See the WndProc() function below for our to dispatch events to the Win32 backend.
-// 	MSG msg;
-// 	while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
-// 	{
-// 		// log message
-// 		// std::cout << "message: " << msg.message << std::endl;
-
-// 		::TranslateMessage(&msg);
-// 		// std::cout << "translated message" << std::endl;
-// 		::DispatchMessage(&msg);
-// 		// std::cout << "dispatched message" << std::endl;
-// 		if (msg.message == WM_QUIT)
-// 			m_Running = false;
-// 	}
-// }
 
 void App::shutdown()
 {
@@ -836,19 +539,12 @@ void App::shutdown()
 
 	m_Running = false;
 
-	if (m_pPointSampler)
-	{
-		m_pPointSampler->Release();
-		m_pPointSampler = nullptr;
-	}
+	// if (m_pPointSampler)
+	// {
+	// 	m_pPointSampler->Release();
+	// 	m_pPointSampler = nullptr;
+	// }
 
-	// Cleanup ImGui
-	ImGui_ImplDX11_Shutdown();
-	ImGui_ImplWin32_Shutdown();
-	ImGui::DestroyContext();
-
-	// Cleanup D3D
-	CleanupDeviceD3D();
 
 	// Destroy window
 	if (m_Hwnd)
@@ -870,7 +566,7 @@ void App::shutdown()
 
 void App::resize(UINT width, UINT height)
 {
-	if (m_pd3dDevice != nullptr && width > 0 && height > 0)
+	if (width > 0 && height > 0)
 	{
 		m_WindowWidth = width;
 		m_WindowHeight = height;

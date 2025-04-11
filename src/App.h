@@ -44,6 +44,8 @@
 
 #include "Codec/Encode/Common/AppEncUtils.h"
 
+#include "Renderer.h"
+
 int initEncoder(int argc, const char **argv);
 template <class EncoderClass>
 void InitializeEncoder(EncoderClass &enc, NvEncoderInitParam encodeCLIOptions, NV_ENC_BUFFER_FORMAT eFormat);
@@ -59,8 +61,8 @@ public:
 
 	// Accessors
 	static App &get();
-	ID3D11Device *getDevice() const { return m_pd3dDevice.Get(); }
-	ID3D11DeviceContext *getDeviceContext() const { return m_pd3dDeviceContext.Get(); }
+	// ID3D11Device *getDevice() const { return m_pd3dDevice.Get(); }
+	// ID3D11DeviceContext *getDeviceContext() const { return m_pd3dDeviceContext.Get(); }
 	HWND getWindow() const { return m_Hwnd; }
 	bool isRunning() const { return m_Running; }
 	float getDeltaTime() const { return m_DeltaTime; }
@@ -83,25 +85,11 @@ protected:
 private:
 	// Window initialization
 	bool InitWindow();
-	bool initImGui();
-
-	// DirectX initialization and cleanup
-	bool CreateDeviceD3D(HWND hWnd);
-	bool CreateRenderTarget();
-	void CleanupDeviceD3D();
-	void CleanupRenderTarget();
 
 	// Device enumeration
 	void EnumerateAdapters();
 	void EnumerateOutputs(IDXGIAdapter *pAdapter, UINT adapterIndex);
 	std::string ws2s(const std::wstring &wstr);
-
-	// DirectX resources
-	Microsoft::WRL::ComPtr<ID3D11Device> m_pd3dDevice;
-	Microsoft::WRL::ComPtr<ID3D11DeviceContext> m_pd3dDeviceContext;
-	Microsoft::WRL::ComPtr<IDXGISwapChain> m_pSwapChain;
-	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> m_mainRenderTargetView;
-	Microsoft::WRL::ComPtr<ID3D11SamplerState> m_pPointSampler;
 
 	// Window resources
 	WNDCLASSEXW m_Wc = {};
@@ -121,7 +109,6 @@ private:
 	// Singleton instance
 	static App *s_Instance;
 
-
 	std::unique_ptr<NvEncoderD3D11> m_Enc;
 	Texture2D m_EncodedTexture;
 
@@ -138,8 +125,6 @@ private:
 
 	ID3D11Texture2D* texture = nullptr;
 
-	// Microsoft::WRL::ComPtr<ID3D11Texture2D> outputTexture;
-	// Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> outputSRV;
 	bool successDecode= false;
 	std::vector<uint8_t> m_DecodedBuffer;
 
@@ -148,4 +133,6 @@ private:
 
 
 	std::shared_ptr<DesktopCapture> m_DesktopCapture;
+
+	std::unique_ptr<Renderer> m_Renderer;
 };
