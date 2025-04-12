@@ -45,28 +45,28 @@
 #include "Codec/Encode/Common/AppEncUtils.h"
 
 #include "Renderer.h"
+#include "Window.h"
 
-int initEncoder(int argc, const char **argv);
-template <class EncoderClass>
-void InitializeEncoder(EncoderClass &enc, NvEncoderInitParam encodeCLIOptions, NV_ENC_BUFFER_FORMAT eFormat);
+#include "Codec/Encode/AppEncD3D11.h"
 
 class App
 {
 public:
 	App();
-	~App() = default;
+	~App()
+	{
+		LOG_INFO("App destructor started");
+	}
 
 	void run();
 	void shutdown();
 
 	// Accessors
 	static App &get();
-	// ID3D11Device *getDevice() const { return m_pd3dDevice.Get(); }
-	// ID3D11DeviceContext *getDeviceContext() const { return m_pd3dDeviceContext.Get(); }
-	HWND getWindow() const { return m_Hwnd; }
 	bool isRunning() const { return m_Running; }
 	float getDeltaTime() const { return m_DeltaTime; }
 
+	void Stop() { m_Running = false; }
 	// Window management
 	void resize(UINT width, UINT height);
 	void PerFrame();
@@ -83,17 +83,10 @@ protected:
 	virtual void onImGuiRender();
 
 private:
-	// Window initialization
-	bool InitWindow();
-
 	// Device enumeration
 	void EnumerateAdapters();
 	void EnumerateOutputs(IDXGIAdapter *pAdapter, UINT adapterIndex);
 	std::string ws2s(const std::wstring &wstr);
-
-	// Window resources
-	WNDCLASSEXW m_Wc = {};
-	HWND m_Hwnd = nullptr;
 
 	// Window state
 	bool m_Running = false;
@@ -131,8 +124,9 @@ private:
 	Texture2D m_NewOutputTexture;
 
 
-
 	std::shared_ptr<DesktopCapture> m_DesktopCapture;
 
+
 	std::unique_ptr<Renderer> m_Renderer;
+	std::unique_ptr<Window> m_Window;
 };

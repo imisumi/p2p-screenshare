@@ -16,6 +16,10 @@
 #include "MyAssert.h"
 #include "Codec/Decoder.h"
 
+// fack you boost why are you hijack my cuda include
+#include <cuda.h>
+// #include <C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.8/include/cuda.h>
+
 // Forward declaration
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -40,39 +44,40 @@ App::App()
 	// Enumerate graphics devices for logging/debugging
 	EnumerateAdapters();
 
-	// Initialize window
-	MY_ASSERT(InitWindow(), "Failed to initialize window");
 
-	// Initialize Direct3D
-	// MY_ASSERT(CreateDeviceD3D(m_Hwnd), "Failed to create D3D device");
-
-	// // Initialize ImGui
-	// MY_ASSERT(initImGui(), "Failed to initialize ImGui");
+	m_Window = std::make_unique<Window>(L"My very cool app", 2560, 1440);
+	m_Window->SetCustomWndProc(WndProc);
+	if (!m_Window->Initialize())
+	{
+		LOG_ERROR("Failed to initialize window");
+		throw std::runtime_error("Failed to initialize window");
+	}
 
 	m_Renderer = std::make_unique<Renderer>();
-	m_Renderer->Initialize(m_Hwnd, 2560, 1440);
-	m_Renderer->InitImGui(m_Hwnd);
+	m_Renderer->Initialize(m_Window->GetHandle(), 2560, 1440);
+	m_Renderer->InitImGui(m_Window->GetHandle());
 	// m_Renderer->
 
 	//? init encoder
-	const char *argv[] = {"./build/Release/AppEncD3D11.exe", "-s", "3840x1440", "-codec",
-						  "h264", "-preset", "p1", "-tuninginfo", "ultralowlatency",
-						  "-bitrate", "50M", "-fps", "60", "-gop", "30"};
+	//TODO: this is ugly, make my own wrapper for encoderoptions later
 	// const char *argv[] = {"./build/Release/AppEncD3D11.exe", "-s", "3840x1440", "-codec",
 	// 					  "h264", "-preset", "p1", "-tuninginfo", "ultralowlatency",
-	// 					  "-bitrate", "5M", "-fps", "30"};
+	// 					  "-bitrate", "25M", "-fps", "60", "-gop", "0"};
+	const char *argv[] = {"-s", "3840x1440", "-codec",
+		"h264", "-preset", "p1", "-tuninginfo", "ultralowlatency",
+		"-bitrate", "25M", "-fps", "60", "-gop", "0"};
+
 	// initEncoder(13, argv);
 	NvEncoderInitParam encodeCLIOptions;
+	// encodeCLIOptions.
 	int nWidth = 0, nHeight = 0, temp = 0;
-	ParseCommandLine_AppEncD3D(15, argv, nWidth, nHeight, encodeCLIOptions, temp, true);
+	ParseCommandLine_AppEncD3D(14, argv, nWidth, nHeight, encodeCLIOptions, temp, true);
 
 	m_Enc = std::make_unique<NvEncoderD3D11>(m_Renderer->GetDevice(), 3840, 2160, NV_ENC_BUFFER_FORMAT_ARGB);
-	// m_Enc = std::make_unique<NvEncoderD3D11>(m_pd3dDevice.Get(), 3840, 2160, NV_ENC_BUFFER_FORMAT_ABGR);
-	// NvEncoderD3D11 enc(m_DxDevice.Get(), m_Width, m_Height, NV_ENC_BUFFER_FORMAT_ARGB);
+
 	InitializeEncoder(*m_Enc, encodeCLIOptions, NV_ENC_BUFFER_FORMAT_ARGB);
 
 	m_EncodedTexture.Create(m_Renderer->GetDevice(), 3840, 2160, Texture2D::TextureType::DEFAULT, Texture2D::TextureFormat::BGRA8_UNORM);
-	// m_EncodedTexture.Create(m_pd3dDevice.Get(), 3840, 2160, Texture2D::TextureType::DEFAULT, Texture2D::TextureFormat::RGBA8_UNORM);
 
 	m_Decoder = std::make_unique<ScreenSharingDecoder>(m_Renderer->GetDevice(), m_Renderer->GetContext());
 
@@ -102,6 +107,7 @@ App::App()
 
 	LOG_INFO("App constructor completed successfully");
 }
+
 
 void App::EnumerateAdapters()
 {
@@ -186,82 +192,6 @@ std::string App::ws2s(const std::wstring &wstr)
 	return result;
 }
 
-bool App::InitWindow()
-{
-	m_Wc = {
-		sizeof(m_Wc),
-		CS_CLASSDC,
-		WndProc,
-		0L,
-		0L,
-		GetModuleHandle(nullptr),
-		nullptr,
-		nullptr,
-		nullptr,
-		nullptr,
-		L"ImGuiApp",
-		nullptr};
-
-	if (!::RegisterClassExW(&m_Wc))
-	{
-		LOG_ERROR("Failed to register window class");
-		return false;
-	}
-
-	// Create window with sensible defaults
-	RECT desktopRect;
-	GetClientRect(GetDesktopWindow(), &desktopRect);
-	int defaultWidth = std::min(2560, (int)(desktopRect.right * 0.8f));
-	int defaultHeight = std::min(1440, (int)(desktopRect.bottom * 0.8f));
-
-	m_Hwnd = ::CreateWindowW(
-		m_Wc.lpszClassName,
-		L"MyApplication",
-		WS_OVERLAPPEDWINDOW,
-		CW_USEDEFAULT,
-		CW_USEDEFAULT,
-		defaultWidth,
-		defaultHeight,
-		nullptr,
-		nullptr,
-		m_Wc.hInstance,
-		nullptr);
-
-	if (!m_Hwnd)
-	{
-		LOG_ERROR("Failed to create window");
-		::UnregisterClassW(m_Wc.lpszClassName, m_Wc.hInstance);
-		return false;
-	}
-
-	// Show the window
-	::ShowWindow(m_Hwnd, SW_SHOWDEFAULT);
-	::UpdateWindow(m_Hwnd);
-
-	SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
-
-	// And use the Game Mode API if on Windows 10+
-	typedef BOOL(WINAPI * PFN_SET_GAME_MODE)(BOOL);
-	// HMODULE hGameMode = LoadLibrary(ws2s(L"GameMode.dll"));
-	HMODULE hGameMode = LoadLibraryA("GameMode.dll");
-	if (hGameMode)
-	{
-		PFN_SET_GAME_MODE pfnSetGameMode =
-			(PFN_SET_GAME_MODE)GetProcAddress(hGameMode, "SetGameMode");
-		if (pfnSetGameMode)
-		{
-			pfnSetGameMode(TRUE);
-		}
-		FreeLibrary(hGameMode);
-	}
-
-	LOG_INFO("Window initialized successfully");
-	return true;
-}
-
-
-
-
 void App::run()
 {
 	LOG_INFO("Application starting main loop");
@@ -273,7 +203,8 @@ void App::run()
 		while (m_Running)
 		{
 			// Process messages
-			onMessage();
+			// onMessage();
+			m_Window->ProcessMessages();
 			if (!m_Running)
 				break;
 
@@ -466,6 +397,7 @@ void App::onImGuiRender()
 				cursorPos.y + (availableRegion.y - imageSize.y) * 0.5f));
 
 			ImGui::Image((ImTextureID)m_DesktopCapture->GetTexture().GetShaderResourceView(), imageSize);
+			// ImGui::Image((ImTextureID)m_DesktopCapture->GetTexture().GetShaderResourceView(), {3840, 2160});
 
 			ImGui::End();
 		}
@@ -501,6 +433,7 @@ void App::onImGuiRender()
 			// Add the tint color parameter (RGBA) with full alpha
 			// ImGui::Image((ImTextureID)outputSRV.Get(), {1920, 1080}, ImVec2(0, 0), ImVec2(1, 1), ImVec4(1, 1, 1, 1));
 			// ImGui::Image(reinterpret_cast<ImTextureID>(outputSRV.Get()), imageSize);
+			// ImGui::Image(reinterpret_cast<ImTextureID>(m_NewOutputTexture.GetShaderResourceView()), imageSize);
 			ImGui::Image(reinterpret_cast<ImTextureID>(m_NewOutputTexture.GetShaderResourceView()), imageSize);
 
 			ImGui::End();
@@ -547,18 +480,18 @@ void App::shutdown()
 
 
 	// Destroy window
-	if (m_Hwnd)
-	{
-		::DestroyWindow(m_Hwnd);
-		m_Hwnd = nullptr;
-	}
+	// if (m_Window->GetHandle())
+	// {
+	// 	::DestroyWindow(m_Hwnd);
+	// 	m_Hwnd = nullptr;
+	// }
 
-	// Unregister window class
-	if (m_Wc.hInstance)
-	{
-		::UnregisterClassW(m_Wc.lpszClassName, m_Wc.hInstance);
-		m_Wc = {};
-	}
+	// // Unregister window class
+	// if (m_Wc.hInstance)
+	// {
+	// 	::UnregisterClassW(m_Wc.lpszClassName, m_Wc.hInstance);
+	// 	m_Wc = {};
+	// }
 
 	LOG_INFO("Application shutdown complete");
 	s_Instance = nullptr;
@@ -609,6 +542,8 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		else if (wParam == SC_CLOSE)
 		{
 			LOG_INFO("WM_SYSCOMMAND: SC_CLOSE");
+			// app.shutdown();
+			app.Stop();
 		}
 		break;
 
@@ -684,115 +619,3 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	}
 	return ::DefWindowProcW(hWnd, msg, wParam, lParam);
 }
-
-#if 0
-LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-	if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
-		return true;
-
-	App &app = App::get();
-
-	// Add this flag to track menu state
-	static bool inSystemMenu = false;
-
-	switch (msg)
-	{
-	case WM_SIZE:
-		if (wParam == SIZE_MINIMIZED)
-			return 0;
-		app.resize((UINT)LOWORD(lParam), (UINT)HIWORD(lParam));
-		return 0;
-	case WM_SYSCOMMAND:
-		std::cout << "WM_SYSCOMMAND: " << std::hex << wParam << std::dec << std::endl;
-
-		// Check specifically for system menu activation
-		if ((wParam & 0xFFF0) == SC_MOUSEMENU || (wParam & 0xFFF0) == SC_KEYMENU)
-		{
-			// System menu is being activated via mouse or keyboard
-			if (!inSystemMenu)
-			{
-				inSystemMenu = true;
-				::SetTimer(hWnd, 1, 1, NULL);
-				std::cout << "Entering system menu" << std::endl;
-			}
-		}
-		break;
-	case WM_NCRBUTTONUP:
-		// This often happens just before the system menu appears
-		std::cout << "WM_NCRBUTTONUP (possibly opening system menu)" << std::endl;
-		if (!inSystemMenu)
-		{
-			inSystemMenu = true;
-			::SetTimer(hWnd, 1, 1, NULL);
-			std::cout << "Potentially entering system menu" << std::endl;
-		}
-		break;
-	case WM_COMMAND:
-	case WM_CANCELMODE:
-	case WM_CAPTURECHANGED:
-		// These can signal the end of a menu operation
-		if (inSystemMenu)
-		{
-			inSystemMenu = false;
-			::KillTimer(hWnd, 1);
-			std::cout << "Potentially exiting system menu" << std::endl;
-		}
-		break;
-	case WM_ENTERSIZEMOVE:
-		::SetTimer(hWnd, 1, 1, NULL);
-		std::cout << "Entering size/move modal loop" << std::endl;
-		break;
-	case WM_EXITSIZEMOVE:
-		::KillTimer(hWnd, 1);
-		std::cout << "Exiting size/move modal loop" << std::endl;
-		break;
-	case WM_ENTERMENULOOP:
-		inSystemMenu = true;
-		::SetTimer(hWnd, 1, 1, NULL);
-		std::cout << "Entering menu loop" << std::endl;
-		break;
-	case WM_EXITMENULOOP:
-		inSystemMenu = false;
-		::KillTimer(hWnd, 1);
-		std::cout << "Exiting menu loop" << std::endl;
-		break;
-	case WM_LBUTTONUP:
-	case WM_RBUTTONUP:
-		// Mouse button up outside the menu might close it
-		if (inSystemMenu)
-		{
-			// Check if we should exit system menu state
-			POINT pt;
-			GetCursorPos(&pt);
-			RECT rcWindow;
-			GetWindowRect(hWnd, &rcWindow);
-
-			// If click is outside window bounds, probably menu closed
-			if (pt.x < rcWindow.left || pt.x > rcWindow.right ||
-				pt.y < rcWindow.top || pt.y > rcWindow.bottom)
-			{
-				inSystemMenu = false;
-				::KillTimer(hWnd, 1);
-				std::cout << "Mouse click outside window - exiting system menu" << std::endl;
-			}
-		}
-		break;
-	case WM_TIMER:
-		if (wParam == 1)
-		{
-			// This is our modal operation timer - perform necessary updates here
-			app.PerFrame();
-		}
-		break;
-	case WM_DESTROY:
-		::PostQuitMessage(0);
-		return 0;
-	default:
-		// You can comment this out if it produces too much log output
-		// std::cout << "message: " << msg << std::endl;
-		break;
-	}
-	return ::DefWindowProcW(hWnd, msg, wParam, lParam);
-}
-#endif

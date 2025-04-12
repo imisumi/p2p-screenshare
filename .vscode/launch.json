@@ -1,19 +1,19 @@
 {
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "name": "Debug test_p2p",
-      "type": "cppvsdbg",
-      // "type": "cppdbg",
-      "request": "launch",
-      "program": "${workspaceFolder}/build/Debug/test_p2p.exe",
-      "args": [
-        "--identity-local",
-        "str:peer_2",
-        "--identity-remote",
-        "str:peer_1"
-      ],
-      "cwd": "${workspaceFolder}"
-    }
-  ]
-}
+	"version": "0.2.0",
+	"configurations": [
+	  {
+		"name": "Debug test_p2p",
+		"type": "cppvsdbg",
+		// "type": "cppdbg",
+		"request": "launch",
+		"program": "${workspaceFolder}/build/Debug/YourProjectName.exe",
+		"args": ["--identity-local", "str:1"],
+		"cwd": "${workspaceFolder}",
+		"environment": [
+		  { "name": "_CRTDBG_ALLOC_MEM_DF", "value": "1" },
+		  { "name": "_CRTDBG_LEAK_CHECK_DF", "value": "1" }
+		],
+		"stopAtEntry": true
+	  }
+	]
+  }

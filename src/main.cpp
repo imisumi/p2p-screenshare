@@ -25,6 +25,7 @@ int main(int, char **)
 		std::cerr << "Unknown error occurred." << std::endl;
 		return EXIT_FAILURE;
 	}
+	std::cout << "Application exited successfully." << std::endl;
 	// App app;
 	// app.run();
 	return 0;

@@ -598,6 +598,62 @@ private:
         return tokens;
     }
 
+	bool SetPreset(GUID presetGUID) {
+		auto it = std::find(vPreset.begin(), vPreset.end(), presetGUID);
+		if (it == vPreset.end()) {
+			LOG(ERROR) << "Invalid preset GUID";
+			return false;
+		}
+		guidPreset = presetGUID;
+		return true;
+	}
+
+	bool SetCodec(GUID codecGUID) {
+		auto it = std::find(vCodec.begin(), vCodec.end(), codecGUID);
+		if (it == vCodec.end()) {
+			LOG(ERROR) << "Invalid codec GUID";
+			return false;
+		}
+		guidCodec = codecGUID;
+		return true;
+	}
+
+	bool SetTuningInfo(NV_ENC_TUNING_INFO tuningInfo) {
+		auto it = std::find(vTuningInfo.begin(), vTuningInfo.end(), tuningInfo);
+		if (it == vTuningInfo.end()) {
+			LOG(ERROR) << "Invalid tuning info GUID";
+			return false;
+		}
+		m_TuningInfo = tuningInfo;
+		return true;
+	}
+
+	bool SetBitrate(uint32_t bitrate) {
+		bitrateCnt = bitrate;
+		return true;
+	}
+
+	bool SetFps(uint32_t fps) {
+		fpsCnt = fps;
+		return true;
+	}
+
+	bool SetGop(uint32_t gop) {
+		if (gop == 0) {
+			LOG(ERROR) << "GOP length must be greater than 0";
+			return false;
+		}
+		return true;
+	}
+
+	bool SetResolution(uint32_t width, uint32_t height) {
+		if (width == 0 || height == 0) {
+			LOG(ERROR) << "Resolution must be greater than 0";
+			return false;
+		}
+		return true;
+	}
+
 private:
     std::string strParam;
     std::function<void(NV_ENC_INITIALIZE_PARAMS *pParams)> funcInit = [](NV_ENC_INITIALIZE_PARAMS *pParams){};

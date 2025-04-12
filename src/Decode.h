@@ -341,6 +341,11 @@ public:
             throw std::runtime_error("Failed to create NVDEC decoder");
         }
     }
+
+	~ScreenSharingDecoder() {
+		// Cleanup is handled in the decoder destructor
+		decoder->Cleanup();
+	}
     
     // Call this method when you receive a new frame from the network
     bool ProcessNetworkFrame(const std::vector<uint8_t>& frameData) {

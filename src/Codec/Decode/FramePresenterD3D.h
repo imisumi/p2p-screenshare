@@ -45,70 +45,70 @@ protected:
     *   @param  nHeight  - Height of the window
     *   @return hwndMain - handle to the created window
     */
-    static HWND CreateAndShowWindow(int nWidth, int nHeight) {
-        double r = std::max(nWidth / 1280.0, nHeight / 720.0);
-        if (r > 1.0) {
-            nWidth = (int)(nWidth / r);
-            nHeight = (int)(nHeight / r);
-        }
+    // static HWND CreateAndShowWindow(int nWidth, int nHeight) {
+    //     double r = std::max(nWidth / 1280.0, nHeight / 720.0);
+    //     if (r > 1.0) {
+    //         nWidth = (int)(nWidth / r);
+    //         nHeight = (int)(nHeight / r);
+    //     }
 
-        static char szAppName[] = "D3DPresenter";
-        WNDCLASS wndclass;
-        wndclass.style = CS_HREDRAW | CS_VREDRAW;
-        wndclass.lpfnWndProc = WndProc;
-        wndclass.cbClsExtra = 0;
-        wndclass.cbWndExtra = 0;
-        wndclass.hInstance = (HINSTANCE)GetModuleHandle(NULL);
-        wndclass.hIcon = LoadIcon(NULL, IDI_APPLICATION);
-        wndclass.hCursor = LoadCursor(NULL, IDC_ARROW);
-        wndclass.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
-        wndclass.lpszMenuName = NULL;
-        wndclass.lpszClassName = szAppName;
-        RegisterClass(&wndclass);
+    //     static char szAppName[] = "D3DPresenter";
+    //     WNDCLASS wndclass;
+    //     wndclass.style = CS_HREDRAW | CS_VREDRAW;
+    //     wndclass.lpfnWndProc = WndProc;
+    //     wndclass.cbClsExtra = 0;
+    //     wndclass.cbWndExtra = 0;
+    //     wndclass.hInstance = (HINSTANCE)GetModuleHandle(NULL);
+    //     wndclass.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+    //     wndclass.hCursor = LoadCursor(NULL, IDC_ARROW);
+    //     wndclass.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
+    //     wndclass.lpszMenuName = NULL;
+    //     wndclass.lpszClassName = szAppName;
+    //     RegisterClass(&wndclass);
 
-        RECT rc{
-            (GetSystemMetrics(SM_CXSCREEN) - nWidth) / 2,
-            (GetSystemMetrics(SM_CYSCREEN) - nHeight) / 2,
-            (GetSystemMetrics(SM_CXSCREEN) + nWidth) / 2,
-            (GetSystemMetrics(SM_CYSCREEN) + nHeight) / 2
-        };
-        AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, FALSE);
+    //     RECT rc{
+    //         (GetSystemMetrics(SM_CXSCREEN) - nWidth) / 2,
+    //         (GetSystemMetrics(SM_CYSCREEN) - nHeight) / 2,
+    //         (GetSystemMetrics(SM_CXSCREEN) + nWidth) / 2,
+    //         (GetSystemMetrics(SM_CYSCREEN) + nHeight) / 2
+    //     };
+    //     AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, FALSE);
 
-        HWND hwndMain = CreateWindow(szAppName, szAppName, WS_OVERLAPPEDWINDOW,
-            rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top,
-            NULL, NULL, wndclass.hInstance, NULL);
-        ShowWindow(hwndMain, SW_SHOW);
-        UpdateWindow(hwndMain);
+    //     HWND hwndMain = CreateWindow(szAppName, szAppName, WS_OVERLAPPEDWINDOW,
+    //         rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top,
+    //         NULL, NULL, wndclass.hInstance, NULL);
+    //     ShowWindow(hwndMain, SW_SHOW);
+    //     UpdateWindow(hwndMain);
 
-        return hwndMain;
-    }
+    //     return hwndMain;
+    // }
 
-    /**
-    *   @brief  Copy device frame to cuda registered D3D surface. More specifically, this function maps the
-    *           D3D swap chain backbuffer into a cuda array and copies the contents of dpBgra into it.
-    *           This ensures that the swap chain back buffer will contain the next surface to be presented.
-    *   @param  dpBgra  - CUDA device pointer to BGRA surface
-    *   @param  nPitch  - pitch of the BGRA surface. Typically width in pixels * number of bytes per pixel
-    */
-    void CopyDeviceFrame(unsigned char *dpBgra, int nPitch) {
-        ck(cuCtxPushCurrent(cuContext));
-        ck(cuGraphicsMapResources(1, &cuResource, 0));
-        CUarray dstArray;
-        ck(cuGraphicsSubResourceGetMappedArray(&dstArray, cuResource, 0, 0));
+    // /**
+    // *   @brief  Copy device frame to cuda registered D3D surface. More specifically, this function maps the
+    // *           D3D swap chain backbuffer into a cuda array and copies the contents of dpBgra into it.
+    // *           This ensures that the swap chain back buffer will contain the next surface to be presented.
+    // *   @param  dpBgra  - CUDA device pointer to BGRA surface
+    // *   @param  nPitch  - pitch of the BGRA surface. Typically width in pixels * number of bytes per pixel
+    // */
+    // void CopyDeviceFrame(unsigned char *dpBgra, int nPitch) {
+    //     ck(cuCtxPushCurrent(cuContext));
+    //     ck(cuGraphicsMapResources(1, &cuResource, 0));
+    //     CUarray dstArray;
+    //     ck(cuGraphicsSubResourceGetMappedArray(&dstArray, cuResource, 0, 0));
 
-        CUDA_MEMCPY2D m = { 0 };
-        m.srcMemoryType = CU_MEMORYTYPE_DEVICE;
-        m.srcDevice = (CUdeviceptr)dpBgra;
-        m.srcPitch = nPitch ? nPitch : nWidth * 4;
-        m.dstMemoryType = CU_MEMORYTYPE_ARRAY;
-        m.dstArray = dstArray;
-        m.WidthInBytes = nWidth * 4;
-        m.Height = nHeight;
-        ck(cuMemcpy2D(&m));
+    //     CUDA_MEMCPY2D m = { 0 };
+    //     m.srcMemoryType = CU_MEMORYTYPE_DEVICE;
+    //     m.srcDevice = (CUdeviceptr)dpBgra;
+    //     m.srcPitch = nPitch ? nPitch : nWidth * 4;
+    //     m.dstMemoryType = CU_MEMORYTYPE_ARRAY;
+    //     m.dstArray = dstArray;
+    //     m.WidthInBytes = nWidth * 4;
+    //     m.Height = nHeight;
+    //     ck(cuMemcpy2D(&m));
 
-        ck(cuGraphicsUnmapResources(1, &cuResource, 0));
-        ck(cuCtxPopCurrent(NULL));
-    }
+    //     ck(cuGraphicsUnmapResources(1, &cuResource, 0));
+    //     ck(cuCtxPopCurrent(NULL));
+    // }
 
 private:
     /**

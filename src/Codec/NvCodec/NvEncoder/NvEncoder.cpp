@@ -727,7 +727,8 @@ void NvEncoder::GetEncodedPacket(std::vector<NV_ENC_OUTPUT_PTR> &vOutputBuffer, 
 	int iEnd = bOutputDelay ? m_iToSend - m_nOutputDelay : m_iToSend;
 	for (; m_iGot < iEnd; m_iGot++)
 	{
-		WaitForCompletionEvent(m_iGot % m_nEncoderBuffer);
+		//TODO: uh idk this causes program to hang
+		// WaitForCompletionEvent(m_iGot % m_nEncoderBuffer);
 		NV_ENC_LOCK_BITSTREAM lockBitstreamData = {NV_ENC_LOCK_BITSTREAM_VER};
 		lockBitstreamData.outputBitstream = vOutputBuffer[m_iGot % m_nEncoderBuffer];
 		lockBitstreamData.doNotWait = false;
@@ -919,10 +920,12 @@ void NvEncoder::WaitForCompletionEvent(int iEvent)
 		return;
 	}
 #ifdef DEBUG
-	WaitForSingleObject(m_vpCompletionEvent[iEvent], INFINITE);
+	WaitForSingleObject(m_vpCompletionEvent[iEvent], 100);
+	// WaitForSingleObject(m_vpCompletionEvent[iEvent], INFINITE);
 #else
 	// wait for 20s which is infinite on terms of gpu time
-	if (WaitForSingleObject(m_vpCompletionEvent[iEvent], 20000) == WAIT_FAILED)
+	// if (WaitForSingleObject(m_vpCompletionEvent[iEvent], 20000) == WAIT_FAILED)
+	if (WaitForSingleObject(m_vpCompletionEvent[iEvent], 1000) == WAIT_FAILED)
 	{
 		NVENC_THROW_ERROR("Failed to encode frame", NV_ENC_ERR_GENERIC);
 	}

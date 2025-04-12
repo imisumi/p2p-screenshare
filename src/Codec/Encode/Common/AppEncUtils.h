@@ -46,7 +46,7 @@ inline void ParseCommandLine_AppEncD3D(int argc, const char *argv[], int &nWidth
 {
 	std::ostringstream oss;
 	int i;
-	for (i = 1; i < argc; i++)
+	for (i = 0; i < argc; i++)
 	{
 		if (!_stricmp(argv[i], "-h"))
 		{
