@@ -19,6 +19,9 @@ public:
     // Device and context access
     ID3D11Device* GetDevice() const { return m_Device.Get(); }
     ID3D11DeviceContext* GetContext() const { return m_Context.Get(); }
+
+	Microsoft::WRL::ComPtr<ID3D11Device> GetDevicePtr() const { return m_Device; }
+	Microsoft::WRL::ComPtr<ID3D11DeviceContext> GetContextPtr() const { return m_Context; }
     
     // ImGui-specific methods
     bool InitImGui(HWND hWnd);
@@ -31,7 +34,7 @@ public:
     void EndFrame();
     
     // Resize handling
-    void Resize(int width, int height);
+    void Resize(uint32_t width, uint32_t height);
     
     // VSync control
     void SetVSync(bool enabled) { m_VSyncEnabled = enabled; }
@@ -64,8 +67,8 @@ private:
     // State
     bool m_VSyncEnabled = false;
     bool m_IsOccluded = false;
-    int m_Width = 0;
-    int m_Height = 0;
+    uint32_t m_Width = 0;
+    uint32_t m_Height = 0;
     
     // Clear color
     float m_ClearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };

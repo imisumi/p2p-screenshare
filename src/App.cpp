@@ -1,4 +1,3 @@
-
 #include "App.h"
 #include <stdexcept>
 #include <iostream>
@@ -42,8 +41,7 @@ App::App()
 	s_Instance = this;
 
 	// Enumerate graphics devices for logging/debugging
-	EnumerateAdapters();
-
+	// EnumerateAdapters();
 
 	m_Window = std::make_unique<Window>(L"My very cool app", 2560, 1440);
 	m_Window->SetCustomWndProc(WndProc);
@@ -59,13 +57,13 @@ App::App()
 	// m_Renderer->
 
 	//? init encoder
-	//TODO: this is ugly, make my own wrapper for encoderoptions later
+	// TODO: this is ugly, make my own wrapper for encoderoptions later
 	// const char *argv[] = {"./build/Release/AppEncD3D11.exe", "-s", "3840x1440", "-codec",
 	// 					  "h264", "-preset", "p1", "-tuninginfo", "ultralowlatency",
 	// 					  "-bitrate", "25M", "-fps", "60", "-gop", "0"};
 	const char *argv[] = {"-s", "3840x1440", "-codec",
-		"h264", "-preset", "p1", "-tuninginfo", "ultralowlatency",
-		"-bitrate", "25M", "-fps", "60", "-gop", "0"};
+						  "h264", "-preset", "p1", "-tuninginfo", "ultralowlatency",
+						  "-bitrate", "25M", "-fps", "60", "-gop", "0"};
 
 	// initEncoder(13, argv);
 	NvEncoderInitParam encodeCLIOptions;
@@ -77,119 +75,14 @@ App::App()
 
 	InitializeEncoder(*m_Enc, encodeCLIOptions, NV_ENC_BUFFER_FORMAT_ARGB);
 
-	m_EncodedTexture.Create(m_Renderer->GetDevice(), 3840, 2160, Texture2D::TextureType::DEFAULT, Texture2D::TextureFormat::BGRA8_UNORM);
-
-	m_Decoder = std::make_unique<ScreenSharingDecoder>(m_Renderer->GetDevice(), m_Renderer->GetContext());
-
-	cuInit(0);
-
-	// Get CUDA device
-	CUdevice cuDevice = 0;
-	cuDeviceGet(&cuDevice, 0);
-
-	// Create CUDA context
-	CUcontext cuContext = nullptr;
-	cuCtxCreate(&cuContext, CU_CTX_SCHED_BLOCKING_SYNC, cuDevice);
-	bool success = m_NvDecoderDX11.Initialize(cuContext, m_Renderer->GetDevice(), m_Renderer->GetContext(),
-											  cudaVideoCodec_H264, // Example codec, adjust as needed
-											  3840, 2160);
-
-	m_NewOutputTexture.CreateWithCustomFlags(
-		m_Renderer->GetDevice(),
-		3840,
-		2160,
-		D3D11_BIND_SHADER_RESOURCE,
-		D3D11_RESOURCE_MISC_SHARED | D3D11_RESOURCE_MISC_SHARED,
-		Texture2D::TextureFormat::BGR8);
-
 	m_DesktopCapture = std::make_unique<DesktopCapture>(m_Renderer->GetDevice(), m_Renderer->GetContext());
 	m_DesktopCapture->InitDesktopDuplication();
 
+	m_DecoderManager.SetDxDevice(m_Renderer->GetDevice(), m_Renderer->GetContext());
+	m_DecoderManager.AddStream("Desktop Duplication", 3840, 2160);
+	m_DecoderManager.AddStream("Desktop Duplication 2", 3840, 2160);
+
 	LOG_INFO("App constructor completed successfully");
-}
-
-
-void App::EnumerateAdapters()
-{
-	// Initialize DXGI factory
-	IDXGIFactory *pFactory = nullptr;
-	HRESULT hr = CreateDXGIFactory(__uuidof(IDXGIFactory), (void **)&pFactory);
-
-	MY_ASSERT(SUCCEEDED(hr), "Failed to create DXGI factory");
-	if (FAILED(hr))
-	{
-		LOG_ERROR("Failed to create DXGI factory: {0:x}", hr);
-		return;
-	}
-
-	// Enumerate adapters (graphics cards)
-	IDXGIAdapter *pAdapter = nullptr;
-	for (UINT i = 0; pFactory->EnumAdapters(i, &pAdapter) != DXGI_ERROR_NOT_FOUND; ++i)
-	{
-		DXGI_ADAPTER_DESC adapterDesc;
-		pAdapter->GetDesc(&adapterDesc);
-
-		std::wstringstream ss;
-		ss << L"GPU " << i << L": " << adapterDesc.Description
-		   << L" (VRAM: " << adapterDesc.DedicatedVideoMemory / (1024 * 1024) << L" MB)";
-		LOG_INFO(ws2s(ss.str()));
-
-		// Enumerate outputs (monitors) for this adapter
-		EnumerateOutputs(pAdapter, i);
-
-		pAdapter->Release();
-	}
-
-	pFactory->Release();
-}
-
-void App::EnumerateOutputs(IDXGIAdapter *pAdapter, UINT adapterIndex)
-{
-	if (!pAdapter)
-		return;
-
-	// Enumerate outputs (monitors) for this adapter
-	IDXGIOutput *pOutput = nullptr;
-	for (UINT j = 0; pAdapter->EnumOutputs(j, &pOutput) != DXGI_ERROR_NOT_FOUND; ++j)
-	{
-		DXGI_OUTPUT_DESC outputDesc;
-		pOutput->GetDesc(&outputDesc);
-
-		// Get current display mode
-		DEVMODEW devMode;
-		ZeroMemory(&devMode, sizeof(devMode));
-		devMode.dmSize = sizeof(devMode);
-
-		if (EnumDisplaySettingsW(outputDesc.DeviceName, ENUM_CURRENT_SETTINGS, &devMode))
-		{
-			std::wstringstream ss;
-			ss << L"  Monitor " << j << L": " << outputDesc.DeviceName
-			   << L" (" << devMode.dmPelsWidth << L"x" << devMode.dmPelsHeight
-			   << L" @" << devMode.dmDisplayFrequency << L"Hz)";
-			LOG_INFO(ws2s(ss.str()));
-		}
-
-		pOutput->Release();
-	}
-}
-
-std::string App::ws2s(const std::wstring &wstr)
-{
-	// Simple wide string to string conversion
-	std::string result;
-	result.reserve(wstr.length());
-	for (wchar_t c : wstr)
-	{
-		if (c <= 127)
-		{
-			result.push_back(static_cast<char>(c));
-		}
-		else
-		{
-			result.push_back('?');
-		}
-	}
-	return result;
 }
 
 void App::run()
@@ -230,41 +123,25 @@ void App::run()
 
 void App::PerFrame()
 {
-	// MY_ASSERT(m_Renderer->GetSwapChain() != nullptr, "SwapChain is null in PerFrame");
-
-	// Check if window is minimized
-	// if (m_SwapChainOccluded)
-	// {
-	// 	if (m_pSwapChain->Present(0, DXGI_PRESENT_TEST) == DXGI_STATUS_OCCLUDED)
-	// 	{
-	// 		// Skip rendering if occluded
-	// 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
-	// 		return;
-	// 	}
-	// 	m_SwapChainOccluded = false;
-	// }
-
 	// Handle window resize
 	if (m_ResizeWidth > 0 && m_ResizeHeight > 0)
 	{
 		LOG_INFO("Resizing swap chain: {0}x{1}", m_ResizeWidth, m_ResizeHeight);
 		m_Renderer->Resize(m_ResizeWidth, m_ResizeHeight);
+		m_Window->Resize(m_ResizeWidth, m_ResizeHeight);
 		m_ResizeWidth = m_ResizeHeight = 0;
 	}
 
 	// Update application state
 	{
-		// ScopedTimer timer("	App::onUpdate");
 		onUpdate();
 	}
 
 	// Render the frame if not occluded
-	// if (!m_SwapChainOccluded)
 	{
 		onImGuiRender();
 	}
 
-	// Present the frame with vsync
 	m_Renderer->EndFrame();
 }
 
@@ -292,8 +169,6 @@ void App::onUpdate()
 	lastTime = currentTime;
 
 	{
-		// ScopedTimer timer("		App::encode");
-
 		// Calculate time since last encode
 		auto currentTime = std::chrono::high_resolution_clock::now();
 		auto elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -315,8 +190,9 @@ void App::onUpdate()
 			if (!m_DecodedBuffer.empty())
 			{
 				// Decode the frame
-				// successDecode = m_NvDecoderDX11.DecodeFrame(m_DecodedBuffer, outputTexture.Get());
-				successDecode = m_NvDecoderDX11.DecodeFrame(m_DecodedBuffer, m_NewOutputTexture.GetTexture());
+				// successDecode = m_NvDecoderDX11.DecodeFrame(m_DecodedBuffer, m_NewOutputTexture.GetTexture());
+				successDecode = m_DecoderManager.DecodeStream("Desktop Duplication", m_DecodedBuffer);
+				successDecode = m_DecoderManager.DecodeStream("Desktop Duplication 2", m_DecodedBuffer);
 				if (!successDecode)
 				{
 					LOG_ERROR("Failed to decode frame");
@@ -347,7 +223,7 @@ void App::onImGuiRender()
 			if (ImGui::BeginTabItem("Main"))
 			{
 				ImGui::Text("Application is running...");
-				ImGui::Text("Window size: %dx%d", m_WindowWidth, m_WindowHeight);
+				ImGui::Text("Window size: %dx%d", m_Window->GetWidth(), m_Window->GetHeight());
 
 				ImGui::EndTabItem();
 			}
@@ -366,7 +242,6 @@ void App::onImGuiRender()
 		}
 
 		ImGui::End();
-
 
 		{
 			ImGui::Begin("DXGI Desktop Duplication");
@@ -433,37 +308,48 @@ void App::onImGuiRender()
 			// Add the tint color parameter (RGBA) with full alpha
 			// ImGui::Image((ImTextureID)outputSRV.Get(), {1920, 1080}, ImVec2(0, 0), ImVec2(1, 1), ImVec4(1, 1, 1, 1));
 			// ImGui::Image(reinterpret_cast<ImTextureID>(outputSRV.Get()), imageSize);
-			// ImGui::Image(reinterpret_cast<ImTextureID>(m_NewOutputTexture.GetShaderResourceView()), imageSize);
-			ImGui::Image(reinterpret_cast<ImTextureID>(m_NewOutputTexture.GetShaderResourceView()), imageSize);
+			ImGui::Image(reinterpret_cast<ImTextureID>(m_DecoderManager.GetDecodedTextureSRV("Desktop Duplication")), imageSize);
+
+			ImGui::End();
+		}
+
+		{
+			ImGui::Begin("decoded texture 2");
+			ImVec2 availableRegion = ImGui::GetContentRegionAvail();
+
+			uint32_t textureWidth = m_DesktopCapture->GetWidth();
+			uint32_t textureHeight = m_DesktopCapture->GetHeight();
+
+			float aspectRatio = (float)textureWidth / (float)textureHeight;
+			ImVec2 imageSize;
+			if (availableRegion.x / aspectRatio <= availableRegion.y)
+			{
+				// Width constrained
+				imageSize.x = availableRegion.x;
+				imageSize.y = availableRegion.x / aspectRatio;
+			}
+			else
+			{
+				// Height constrained
+				imageSize.y = availableRegion.y;
+				imageSize.x = availableRegion.y * aspectRatio;
+			}
+
+			// Center the image in the available region
+			ImVec2 cursorPos = ImGui::GetCursorPos();
+			ImGui::SetCursorPos(ImVec2(
+				cursorPos.x + (availableRegion.x - imageSize.x) * 0.5f,
+				cursorPos.y + (availableRegion.y - imageSize.y) * 0.5f));
+			// Add the tint color parameter (RGBA) with full alpha
+			// ImGui::Image((ImTextureID)outputSRV.Get(), {1920, 1080}, ImVec2(0, 0), ImVec2(1, 1), ImVec4(1, 1, 1, 1));
+			// ImGui::Image(reinterpret_cast<ImTextureID>(outputSRV.Get()), imageSize);
+			ImGui::Image(reinterpret_cast<ImTextureID>(m_DecoderManager.GetDecodedTextureSRV("Desktop Duplication 2")), imageSize);
 
 			ImGui::End();
 		}
 	}
 
 	m_Renderer->EndImGuiFrame();
-}
-
-
-void App::onMessage()
-{
-	// Process messages, but limit how many we handle per frame to stay responsive
-	const int MAX_MESSAGES_PER_FRAME = 10;
-	int messageCount = 0;
-
-	MSG msg;
-	while (messageCount < MAX_MESSAGES_PER_FRAME && ::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
-	{
-		::TranslateMessage(&msg);
-		::DispatchMessage(&msg);
-
-		if (msg.message == WM_QUIT)
-		{
-			m_Running = false;
-			return;
-		}
-
-		messageCount++;
-	}
 }
 
 void App::shutdown()
@@ -477,7 +363,6 @@ void App::shutdown()
 	// 	m_pPointSampler->Release();
 	// 	m_pPointSampler = nullptr;
 	// }
-
 
 	// Destroy window
 	// if (m_Window->GetHandle())
@@ -501,8 +386,6 @@ void App::resize(UINT width, UINT height)
 {
 	if (width > 0 && height > 0)
 	{
-		m_WindowWidth = width;
-		m_WindowHeight = height;
 		m_ResizeWidth = width;
 		m_ResizeHeight = height;
 		LOG_INFO("Window resize requested: {0}x{1}", width, height);
